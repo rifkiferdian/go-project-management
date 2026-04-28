@@ -153,24 +153,6 @@
                 background-repeat: repeat;
                 background-position: left top;
             }
-            .gcurwrap {
-                position: absolute;
-                inset: 0;
-                pointer-events: none;
-            }
-            .gcurshade {
-                position: absolute;
-                top: 0;
-                bottom: 0;
-                background: rgba(198, 194, 255, 0.55);
-            }
-            .gcurline {
-                position: absolute;
-                top: 0;
-                bottom: 0;
-                width: 1px;
-                background: #3848ff;
-            }
             .gtaskbarcontainer {
                 position: absolute;
                 top: 50%;
@@ -277,11 +259,11 @@
                                         <table class="gtasktable">
                                             <tbody>
                                                 {{ range .Rows }}
-                                                <tr class="{{ if .ShowBar }}ggroupitem{{ else }}glineitem{{ end }} roadmap-row" data-display="table-row" data-roadmap-search="{{ .SearchText }}">
+                                                <tr class="{{ .StyleClass }} roadmap-row" data-display="table-row" data-roadmap-search="{{ .SearchText }}">
                                                     <td class="gtasklist">&nbsp;</td>
                                                     <td class="gtaskname gtasknamecell">
                                                         <div class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                                                            {{ if .ShowBar }}<span class="gfoldercollapse">-</span>{{ end }}
+                                                            {{ if .ShowGroupMark }}<span class="gfoldercollapse">-</span>{{ end }}
                                                             <span>{{ if .IsChild }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ end }}{{ .Name }}</span>
                                                         </div>
                                                     </td>
@@ -323,16 +305,12 @@
 
                                                 <div id="roadmap-rows-right">
                                                     {{ range .Rows }}
-                                                    <div class="gchart-row {{ if .ShowBar }}ggroupitem{{ else }}glineitem{{ end }} roadmap-row" data-display="block" data-roadmap-search="{{ .SearchText }}">
-                                                        <div class="gcurwrap">
-                                                            <div class="gcurshade" style="left: {{ $.CurrentMarkerLeft }}px; width: {{ $.CurrentMarkerWidth }}px;"></div>
-                                                            <div class="gcurline" style="left: {{ $.CurrentMarkerLeft }}px;"></div>
-                                                        </div>
+                                                    <div class="gchart-row {{ .StyleClass }} roadmap-row" data-display="block" data-roadmap-search="{{ .SearchText }}">
                                                         <div class="gchart-grid" style="background-image: repeating-linear-gradient(to right, rgba(226, 232, 240, 0.95) 0, rgba(226, 232, 240, 0.95) 1px, transparent 1px, transparent {{ $.ColumnWidth }}px);"></div>
                                                         {{ if .ShowBar }}
                                                         <div data-roadmap-bar data-bar-left="{{ .BarLeftPx }}" class="gtaskbarcontainer" style="left: {{ .BarLeftPx }}px; width: {{ .BarWidthPx }}px;">
-                                                            <div class="g-custom-task" style="width: {{ .BarWidthPx }}px;">
-                                                                <div class="g-custom-taskcomplete" style="width: {{ .BarProgressPct }}%;"></div>
+                                                            <div class="g-custom-task" style="width: {{ .BarWidthPx }}px; background: {{ .BarColor }};">
+                                                                <div class="g-custom-taskcomplete" style="width: {{ .BarProgressPct }}%; background: {{ .BarAccentColor }};"></div>
                                                             </div>
                                                         </div>
                                                         {{ end }}
@@ -452,6 +430,16 @@
                         <div>
                             <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Estimation (hours)</label>
                             <input type="number" step="0.5" min="0" name="estimation" value="{{ with .TicketOld }}{{ .Estimation }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                        </div>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Start Date</label>
+                            <input type="date" name="starts_at" value="{{ with .TicketOld }}{{ .StartsAt }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">End Date</label>
+                            <input type="date" name="ends_at" value="{{ with .TicketOld }}{{ .EndsAt }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
                         </div>
                     </div>
                     <div class="flex justify-end gap-3 border-t border-slate-100 pt-4">

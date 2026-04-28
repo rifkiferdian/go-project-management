@@ -33,5 +33,41 @@ func Connect() {
 		panic(err)
 	}
 
+	if err := ensureTicketScheduleColumns(DB, os.Getenv("DB_NAME")); err != nil {
+		panic(err)
+	}
+
 	fmt.Println("Database connected successfully")
+}
+
+func ensureTicketScheduleColumns(db *sql.DB, dbName string) error {
+	columns := []struct {
+		name       string
+		definition string
+	}{
+		{name: "starts_at", definition: "ADD COLUMN `starts_at` DATE NULL AFTER `estimation`"},
+		{name: "ends_at", definition: "ADD COLUMN `ends_at` DATE NULL AFTER `starts_at`"},
+	}
+
+	for _, column := range columns {
+		var count int
+		err := db.QueryRow(`
+			SELECT COUNT(1)
+			FROM INFORMATION_SCHEMA.COLUMNS
+			WHERE TABLE_SCHEMA = ?
+				AND TABLE_NAME = 'tickets'
+				AND COLUMN_NAME = ?
+		`, dbName, column.name).Scan(&count)
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			continue
+		}
+		if _, err := db.Exec("ALTER TABLE tickets " + column.definition); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

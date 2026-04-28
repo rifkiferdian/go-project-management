@@ -29,6 +29,8 @@ func (r *ManagementRepository) GetTickets() ([]models.TicketListItem, error) {
 			owner.name AS owner_name,
 			COALESCE(responsible.name, '-') AS responsible_name,
 			COALESCE(t.estimation, 0) AS estimation,
+			t.starts_at,
+			t.ends_at,
 			t.updated_at
 		FROM tickets t
 		JOIN projects p ON p.id = t.project_id
@@ -48,8 +50,10 @@ func (r *ManagementRepository) GetTickets() ([]models.TicketListItem, error) {
 	var items []models.TicketListItem
 	for rows.Next() {
 		var (
-			item      models.TicketListItem
-			updatedAt time.Time
+			item        models.TicketListItem
+			startsAtRaw sql.NullTime
+			endsAtRaw   sql.NullTime
+			updatedAt   time.Time
 		)
 		if err := rows.Scan(
 			&item.ID,
@@ -65,11 +69,15 @@ func (r *ManagementRepository) GetTickets() ([]models.TicketListItem, error) {
 			&item.OwnerName,
 			&item.ResponsibleName,
 			&item.Estimation,
+			&startsAtRaw,
+			&endsAtRaw,
 			&updatedAt,
 		); err != nil {
 			return nil, err
 		}
 		item.EstimationText = formatHours(item.Estimation)
+		item.StartsAtDisplay = formatOptionalDate(startsAtRaw)
+		item.EndsAtDisplay = formatOptionalDate(endsAtRaw)
 		item.UpdatedAtDisplay = updatedAt.Format("02 Jan 2006 15:04")
 		items = append(items, item)
 	}
@@ -362,10 +370,10 @@ func (r *ManagementRepository) CreateRoadmapTicket(input models.RoadmapTicketCre
 	_, err = r.DB.Exec(`
 		INSERT INTO tickets (
 			name, content, owner_id, responsible_id, status_id, project_id,
-			created_at, updated_at, code, type_id, `+"`order`"+`, priority_id, estimation, epic_id
+			created_at, updated_at, code, type_id, `+"`order`"+`, priority_id, estimation, starts_at, ends_at, epic_id
 		)
-		VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?, ?, ?, ?)
-	`, input.Name, input.Name, input.ResourceUserID, input.ResourceUserID, statusID, input.ProjectID, code, typeID, nextOrder, priorityID, nullableEstimation(input.Estimation), nullableIntPointer(input.EpicID))
+		VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?, ?, ?, ?, ?, ?)
+	`, input.Name, input.Name, input.ResourceUserID, input.ResourceUserID, statusID, input.ProjectID, code, typeID, nextOrder, priorityID, nullableEstimation(input.Estimation), input.StartsAt, input.EndsAt, nullableIntPointer(input.EpicID))
 	return err
 }
 
@@ -378,6 +386,8 @@ func (r *ManagementRepository) GetRoadmapTickets() ([]models.RoadmapTicket, erro
 			t.name,
 			p.name AS project_name,
 			COALESCE(responsible.name, owner.name, '-') AS resource_name,
+			t.starts_at,
+			t.ends_at,
 			ts.name AS status_name
 		FROM tickets t
 		JOIN projects p ON p.id = t.project_id
@@ -395,13 +405,19 @@ func (r *ManagementRepository) GetRoadmapTickets() ([]models.RoadmapTicket, erro
 	var items []models.RoadmapTicket
 	for rows.Next() {
 		var (
-			item       models.RoadmapTicket
-			statusName string
+			item        models.RoadmapTicket
+			startsAtRaw sql.NullTime
+			endsAtRaw   sql.NullTime
+			statusName  string
 		)
-		if err := rows.Scan(&item.ID, &item.EpicID, &item.ProjectID, &item.Name, &item.ProjectName, &item.ResourceName, &statusName); err != nil {
+		if err := rows.Scan(&item.ID, &item.EpicID, &item.ProjectID, &item.Name, &item.ProjectName, &item.ResourceName, &startsAtRaw, &endsAtRaw, &statusName); err != nil {
 			return nil, err
 		}
 		item.Progress = roadmapTicketProgress(statusName)
+		item.StartsAtISO = optionalDateISO(startsAtRaw)
+		item.EndsAtISO = optionalDateISO(endsAtRaw)
+		item.StartsAt = formatOptionalDate(startsAtRaw)
+		item.EndsAt = formatOptionalDate(endsAtRaw)
 		items = append(items, item)
 	}
 
@@ -570,4 +586,18 @@ func nullableIntPointer(value *int) interface{} {
 		return nil
 	}
 	return *value
+}
+
+func formatOptionalDate(value sql.NullTime) string {
+	if !value.Valid {
+		return "-"
+	}
+	return value.Time.Format("02 Jan 2006")
+}
+
+func optionalDateISO(value sql.NullTime) string {
+	if !value.Valid {
+		return ""
+	}
+	return value.Time.Format("2006-01-02")
 }

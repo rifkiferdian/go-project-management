@@ -94,6 +94,8 @@ func (s *ManagementService) CreateRoadmapEpic(input models.RoadmapEpicCreateInpu
 
 func (s *ManagementService) CreateRoadmapTicket(input models.RoadmapTicketCreateInput) error {
 	input.Name = strings.TrimSpace(input.Name)
+	input.StartsAt = strings.TrimSpace(input.StartsAt)
+	input.EndsAt = strings.TrimSpace(input.EndsAt)
 	if input.ProjectID <= 0 {
 		return errors.New("project wajib dipilih")
 	}
@@ -106,11 +108,25 @@ func (s *ManagementService) CreateRoadmapTicket(input models.RoadmapTicketCreate
 	if input.Estimation < 0 {
 		return errors.New("estimasi tidak valid")
 	}
+	if input.StartsAt == "" || input.EndsAt == "" {
+		return errors.New("start date dan end date wajib diisi")
+	}
+	start, err := time.Parse("2006-01-02", input.StartsAt)
+	if err != nil {
+		return errors.New("format start date tidak valid")
+	}
+	end, err := time.Parse("2006-01-02", input.EndsAt)
+	if err != nil {
+		return errors.New("format end date tidak valid")
+	}
+	if end.Before(start) {
+		return errors.New("end date tidak boleh lebih kecil dari start date")
+	}
 	return s.Repo.CreateRoadmapTicket(input)
 }
 
 func (s *ManagementService) BuildRoadmapTimeline(epics []models.RoadmapEpic, tickets []models.RoadmapTicket, now time.Time, format string) ([]models.RoadmapWeek, []models.RoadmapTimelineRow, int, int, int, int) {
-	rangeStart, rangeEnd := timelineBounds(epics, now, format)
+	rangeStart, rangeEnd := timelineBounds(epics, tickets, now, format)
 	columns, columnWidth := buildRoadmapColumns(rangeStart, rangeEnd, format)
 	timelineWidth := len(columns) * columnWidth
 
@@ -120,6 +136,14 @@ func (s *ManagementService) BuildRoadmapTimeline(epics []models.RoadmapEpic, tic
 	}
 
 	rows := make([]models.RoadmapTimelineRow, 0, len(epics)+len(tickets))
+	for index, ticket := range ticketsByEpic[0] {
+		rowTone := ""
+		if index%2 == 0 {
+			rowTone = "bg-amber-50/50"
+		}
+		rows = append(rows, makeTicketTimelineRow(ticket, false, rowTone, rangeStart, format, columnWidth))
+	}
+
 	for _, epic := range epics {
 		epicTickets := ticketsByEpic[epic.ID]
 		if len(epicTickets) > 0 {
@@ -150,27 +174,15 @@ func (s *ManagementService) BuildRoadmapTimeline(epics []models.RoadmapEpic, tic
 			"",
 			epic.ProjectName,
 		))
+		rows[len(rows)-1].StyleClass = "ggroupitem"
+		rows[len(rows)-1].ShowGroupMark = true
 
 		for index, ticket := range epicTickets {
 			rowTone := ""
 			if index%2 == 0 {
 				rowTone = "bg-amber-50/50"
 			}
-			rows = append(rows, models.RoadmapTimelineRow{
-				Name:           ticket.Name,
-				Resource:       ticket.ResourceName,
-				Progress:       ticket.Progress,
-				ProgressLabel:  strconv.Itoa(ticket.Progress) + "%",
-				StartDateLabel: "",
-				EndDateLabel:   "",
-				BarColor:       "#4f88eb",
-				BarAccentColor: "#35c65a",
-				BarProgressPct: ticket.Progress,
-				ShowBar:        false,
-				IsChild:        true,
-				SearchText:     strings.ToLower(ticket.Name + " " + ticket.ProjectName + " " + ticket.ResourceName),
-				RowTone:        rowTone,
-			})
+			rows = append(rows, makeTicketTimelineRow(ticket, true, rowTone, rangeStart, format, columnWidth))
 		}
 	}
 
@@ -197,7 +209,7 @@ func progressLabel(done, total int) string {
 	return strconv.Itoa(done) + "/" + strconv.Itoa(total) + " tickets"
 }
 
-func timelineBounds(epics []models.RoadmapEpic, now time.Time, format string) (time.Time, time.Time) {
+func timelineBounds(epics []models.RoadmapEpic, tickets []models.RoadmapTicket, now time.Time, format string) (time.Time, time.Time) {
 	var starts []time.Time
 	var ends []time.Time
 
@@ -206,6 +218,14 @@ func timelineBounds(epics []models.RoadmapEpic, now time.Time, format string) (t
 			starts = append(starts, start)
 		}
 		if end, err := time.Parse("2006-01-02", epic.EndsAtISO); err == nil {
+			ends = append(ends, end)
+		}
+	}
+	for _, ticket := range tickets {
+		if start, err := time.Parse("2006-01-02", ticket.StartsAtISO); err == nil {
+			starts = append(starts, start)
+		}
+		if end, err := time.Parse("2006-01-02", ticket.EndsAtISO); err == nil {
 			ends = append(ends, end)
 		}
 	}
@@ -265,6 +285,10 @@ func buildRoadmapColumns(start, end time.Time, format string) ([]models.RoadmapW
 func makeTimelineRow(name, resource string, progress int, progressLabel, startLabel, endLabel, startISO, endISO, barColor, accentColor string, isChild bool, rangeStart time.Time, format string, columnWidth int, showBar bool, rowTone string, projectName string) models.RoadmapTimelineRow {
 	start, errStart := time.Parse("2006-01-02", startISO)
 	end, errEnd := time.Parse("2006-01-02", endISO)
+	styleClass := "ggroupitem"
+	if isChild {
+		styleClass = "glineitem"
+	}
 	if errStart != nil || errEnd != nil {
 		return models.RoadmapTimelineRow{
 			Name:           name,
@@ -280,6 +304,7 @@ func makeTimelineRow(name, resource string, progress int, progressLabel, startLa
 			BarProgressPct: progress,
 			ShowBar:        showBar,
 			IsChild:        isChild,
+			StyleClass:     styleClass,
 			SearchText:     strings.ToLower(name + " " + resource + " " + projectName),
 			RowTone:        rowTone,
 		}
@@ -304,9 +329,44 @@ func makeTimelineRow(name, resource string, progress int, progressLabel, startLa
 		BarProgressPct: progress,
 		ShowBar:        showBar,
 		IsChild:        isChild,
+		StyleClass:     styleClass,
 		SearchText:     strings.ToLower(name + " " + resource + " " + projectName),
 		RowTone:        rowTone,
 	}
+}
+
+func makeTicketTimelineRow(ticket models.RoadmapTicket, isChild bool, rowTone string, rangeStart time.Time, format string, columnWidth int) models.RoadmapTimelineRow {
+	startLabel := ticket.StartsAt
+	if startLabel == "" {
+		startLabel = "-"
+	}
+	endLabel := ticket.EndsAt
+	if endLabel == "" {
+		endLabel = "-"
+	}
+
+	row := makeTimelineRow(
+		ticket.Name,
+		ticket.ResourceName,
+		ticket.Progress,
+		strconv.Itoa(ticket.Progress)+"%",
+		startLabel,
+		endLabel,
+		ticket.StartsAtISO,
+		ticket.EndsAtISO,
+		"#fdba74",
+		"#f97316",
+		isChild,
+		rangeStart,
+		format,
+		columnWidth,
+		ticket.StartsAtISO != "" && ticket.EndsAtISO != "",
+		rowTone,
+		ticket.ProjectName,
+	)
+	row.StyleClass = "glineitem"
+	row.ShowGroupMark = false
+	return row
 }
 
 func barMetrics(start, end, rangeStart time.Time, format string, columnWidth int) (int, int) {

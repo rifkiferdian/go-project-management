@@ -86,6 +86,8 @@ func RoadMapTicketStore(c *gin.Context) {
 		Name:           c.PostForm("name"),
 		ResourceUserID: resourceUserID,
 		Estimation:     estimation,
+		StartsAt:       c.PostForm("starts_at"),
+		EndsAt:         c.PostForm("ends_at"),
 	}
 
 	if err := svc.CreateRoadmapTicket(input); err != nil {

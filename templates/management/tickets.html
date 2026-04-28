@@ -40,7 +40,7 @@
                             </div>
                             <div class="p-4">
                                 <div class="overflow-x-auto">
-                                    <table class="w-full min-w-[1120px] text-sm">
+                                    <table class="w-full min-w-[1320px] text-sm">
                                         <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                                             <tr>
                                                 <th class="px-3 py-2 text-left font-semibold">Code</th>
@@ -52,6 +52,8 @@
                                                 <th class="px-3 py-2 text-left font-semibold">Owner</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Responsible</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Estimation</th>
+                                                <th class="px-3 py-2 text-left font-semibold">Start Date</th>
+                                                <th class="px-3 py-2 text-left font-semibold">End Date</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Updated</th>
                                             </tr>
                                         </thead>
@@ -84,11 +86,13 @@
                                                 <td class="px-3 py-3 text-slate-600">{{ .OwnerName }}</td>
                                                 <td class="px-3 py-3 text-slate-600">{{ .ResponsibleName }}</td>
                                                 <td class="px-3 py-3 text-slate-600">{{ .EstimationText }}</td>
+                                                <td class="px-3 py-3 text-slate-600">{{ .StartsAtDisplay }}</td>
+                                                <td class="px-3 py-3 text-slate-600">{{ .EndsAtDisplay }}</td>
                                                 <td class="px-3 py-3 text-slate-500">{{ .UpdatedAtDisplay }}</td>
                                             </tr>
                                             {{ else }}
                                             <tr>
-                                                <td colspan="10" class="px-3 py-10 text-center text-sm text-slate-500">Belum ada ticket.</td>
+                                                <td colspan="12" class="px-3 py-10 text-center text-sm text-slate-500">Belum ada ticket.</td>
                                             </tr>
                                             {{ end }}
                                         </tbody>

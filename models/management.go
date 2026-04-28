@@ -16,6 +16,8 @@ type TicketListItem struct {
 	ResponsibleName  string
 	Estimation       float64
 	EstimationText   string
+	StartsAtDisplay  string
+	EndsAtDisplay    string
 	UpdatedAtDisplay string
 }
 
@@ -89,6 +91,10 @@ type RoadmapTicket struct {
 	ProjectName  string
 	ResourceName string
 	Progress     int
+	StartsAtISO  string
+	EndsAtISO    string
+	StartsAt     string
+	EndsAt       string
 }
 
 // RoadmapEpicCreateInput menampung input pembuatan epic dari halaman roadmap.
@@ -106,6 +112,8 @@ type RoadmapTicketCreateInput struct {
 	Name           string
 	ResourceUserID int
 	Estimation     float64
+	StartsAt       string
+	EndsAt         string
 }
 
 // RoadmapEpicOption dipakai untuk select epic pada modal ticket.
@@ -144,6 +152,8 @@ type RoadmapTimelineRow struct {
 	BarProgressPct int
 	ShowBar        bool
 	IsChild        bool
+	StyleClass     string
+	ShowGroupMark  bool
 	SearchText     string
 	RowTone        string
 }

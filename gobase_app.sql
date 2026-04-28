@@ -670,6 +670,8 @@ CREATE TABLE `tickets` (
   `order` int(11) NOT NULL DEFAULT 0,
   `priority_id` bigint(20) UNSIGNED NOT NULL,
   `estimation` double(8,2) DEFAULT NULL,
+  `starts_at` date DEFAULT NULL,
+  `ends_at` date DEFAULT NULL,
   `epic_id` bigint(20) UNSIGNED DEFAULT NULL,
   `sprint_id` bigint(20) UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -678,9 +680,9 @@ CREATE TABLE `tickets` (
 -- Dumping data for table `tickets`
 --
 
-INSERT INTO `tickets` (`id`, `name`, `content`, `owner_id`, `responsible_id`, `status_id`, `project_id`, `deleted_at`, `created_at`, `updated_at`, `code`, `type_id`, `order`, `priority_id`, `estimation`, `epic_id`, `sprint_id`) VALUES
-(1, 'Meeting', '<p>Bahas Alur APP Request</p>', 1, 1, 1, 1, NULL, '2026-04-12 23:02:02', '2026-04-27 00:45:40', 'SE-1', 1, 0, 2, 8.00, 1, NULL),
-(2, 'Buar Dockumentasi requirement Aplikasi', '<p>Buar Dockumentasi requirement Aplikasi</p>', 1, 1, 1, 1, NULL, '2026-04-27 00:23:07', '2026-04-27 00:24:38', 'SE-2', 1, 1, 2, 120.00, 1, NULL);
+INSERT INTO `tickets` (`id`, `name`, `content`, `owner_id`, `responsible_id`, `status_id`, `project_id`, `deleted_at`, `created_at`, `updated_at`, `code`, `type_id`, `order`, `priority_id`, `estimation`, `starts_at`, `ends_at`, `epic_id`, `sprint_id`) VALUES
+(1, 'Meeting', '<p>Bahas Alur APP Request</p>', 1, 1, 1, 1, NULL, '2026-04-12 23:02:02', '2026-04-27 00:45:40', 'SE-1', 1, 0, 2, 8.00, '2026-04-14', '2026-04-15', 1, NULL),
+(2, 'Buar Dockumentasi requirement Aplikasi', '<p>Buar Dockumentasi requirement Aplikasi</p>', 1, 1, 1, 1, NULL, '2026-04-27 00:23:07', '2026-04-27 00:24:38', 'SE-2', 1, 1, 2, 120.00, '2026-04-16', '2026-04-30', 1, NULL);
 
 -- --------------------------------------------------------
 
