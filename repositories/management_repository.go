@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	helpers "gobase-app/helper"
 	"gobase-app/models"
@@ -125,6 +126,118 @@ func (r *ManagementRepository) GetTicketDetailPage(id int) (models.TicketDetailP
 	}, nil
 }
 
+func (r *ManagementRepository) GetTicketEditPage(id int) (models.TicketEditPage, error) {
+	form, err := r.GetTicketEditForm(id)
+	if err != nil {
+		return models.TicketEditPage{}, err
+	}
+
+	statuses, err := r.GetTicketStatusOptions(form.ProjectID)
+	if err != nil {
+		return models.TicketEditPage{}, err
+	}
+
+	priorities, err := r.GetTicketPriorityOptions()
+	if err != nil {
+		return models.TicketEditPage{}, err
+	}
+
+	types, err := r.GetTicketTypeOptions()
+	if err != nil {
+		return models.TicketEditPage{}, err
+	}
+
+	users, err := r.GetTicketUserOptions()
+	if err != nil {
+		return models.TicketEditPage{}, err
+	}
+
+	epics, err := r.GetTicketEpicOptions(form.ProjectID)
+	if err != nil {
+		return models.TicketEditPage{}, err
+	}
+
+	return models.TicketEditPage{
+		Form:            form,
+		StatusOptions:   statuses,
+		PriorityOptions: priorities,
+		TypeOptions:     types,
+		UserOptions:     users,
+		EpicOptions:     epics,
+	}, nil
+}
+
+func (r *ManagementRepository) GetTicketEditForm(id int) (models.TicketEditForm, error) {
+	var (
+		item        models.TicketEditForm
+		contentRaw  string
+		estimation  sql.NullFloat64
+		startsAtRaw sql.NullTime
+		endsAtRaw   sql.NullTime
+		responsible sql.NullInt64
+		epic        sql.NullInt64
+	)
+
+	err := r.DB.QueryRow(`
+		SELECT
+			t.id,
+			t.project_id,
+			t.code,
+			p.name AS project_name,
+			t.name,
+			t.content,
+			t.status_id,
+			t.priority_id,
+			t.type_id,
+			t.owner_id,
+			t.responsible_id,
+			t.epic_id,
+			t.estimation,
+			t.starts_at,
+			t.ends_at
+		FROM tickets t
+		JOIN projects p ON p.id = t.project_id
+		WHERE t.id = ? AND t.deleted_at IS NULL
+	`, id).Scan(
+		&item.ID,
+		&item.ProjectID,
+		&item.Code,
+		&item.ProjectName,
+		&item.Name,
+		&contentRaw,
+		&item.StatusID,
+		&item.PriorityID,
+		&item.TypeID,
+		&item.OwnerID,
+		&responsible,
+		&epic,
+		&estimation,
+		&startsAtRaw,
+		&endsAtRaw,
+	)
+	if err != nil {
+		return models.TicketEditForm{}, err
+	}
+
+	item.Content = plainTextFromHTML(contentRaw)
+	if item.Content == "-" {
+		item.Content = ""
+	}
+	if responsible.Valid {
+		item.ResponsibleID = int(responsible.Int64)
+	}
+	if epic.Valid {
+		item.EpicID = int(epic.Int64)
+	}
+	if estimation.Valid && estimation.Float64 > 0 {
+		item.Estimation = trimFloat(estimation.Float64)
+	}
+	item.StartsAt = optionalDateISO(startsAtRaw)
+	item.EndsAt = optionalDateISO(endsAtRaw)
+
+	return item, nil
+}
+
 func (r *ManagementRepository) GetTicketDetail(id int) (models.TicketDetail, error) {
 	var (
 		item         models.TicketDetail
@@ -216,6 +329,226 @@ func (r *ManagementRepository) GetTicketDetail(id int) (models.TicketDetail, err
 	item.UpdatedAtRelative = relativeTime(updatedAtRaw)
 
 	return item, nil
+}
+
+func (r *ManagementRepository) GetTicketStatusOptions(projectID int) ([]models.TicketFormOption, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, name, COALESCE(color, '#cecece') AS color
+		FROM ticket_statuses
+		WHERE deleted_at IS NULL
+			AND (project_id IS NULL OR project_id = ?)
+		ORDER BY project_id IS NOT NULL, `+"`order`"+` ASC, name ASC
+	`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketFormOption
+	for rows.Next() {
+		var item models.TicketFormOption
+		if err := rows.Scan(&item.ID, &item.Name, &item.Color); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) GetTicketPriorityOptions() ([]models.TicketFormOption, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, name, COALESCE(color, '#cecece') AS color
+		FROM ticket_priorities
+		WHERE deleted_at IS NULL
+		ORDER BY CASE WHEN is_default = 1 THEN 0 ELSE 1 END, name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketFormOption
+	for rows.Next() {
+		var item models.TicketFormOption
+		if err := rows.Scan(&item.ID, &item.Name, &item.Color); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) GetTicketTypeOptions() ([]models.TicketFormOption, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, name, COALESCE(color, '#cecece') AS color
+		FROM ticket_types
+		WHERE deleted_at IS NULL
+		ORDER BY CASE WHEN is_default = 1 THEN 0 ELSE 1 END, name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketFormOption
+	for rows.Next() {
+		var item models.TicketFormOption
+		if err := rows.Scan(&item.ID, &item.Name, &item.Color); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) GetTicketUserOptions() ([]models.TicketUserOption, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, name
+		FROM users
+		WHERE deleted_at IS NULL
+		ORDER BY name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketUserOption
+	for rows.Next() {
+		var item models.TicketUserOption
+		if err := rows.Scan(&item.ID, &item.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) GetTicketEpicOptions(projectID int) ([]models.TicketEpicOption, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, name
+		FROM epics
+		WHERE project_id = ? AND deleted_at IS NULL
+		ORDER BY name ASC
+	`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketEpicOption
+	for rows.Next() {
+		var item models.TicketEpicOption
+		if err := rows.Scan(&item.ID, &item.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) UpdateTicket(input models.TicketUpdateInput, estimationValue float64, actorUserID int) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	var (
+		projectID       int
+		currentStatusID int
+	)
+	if err := tx.QueryRow(`
+		SELECT project_id, status_id
+		FROM tickets
+		WHERE id = ? AND deleted_at IS NULL
+	`, input.ID).Scan(&projectID, &currentStatusID); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := ensureExists(tx, `
+		SELECT COUNT(1)
+		FROM ticket_statuses
+		WHERE id = ? AND deleted_at IS NULL AND (project_id IS NULL OR project_id = ?)
+	`, input.StatusID, projectID); err != nil {
+		tx.Rollback()
+		return errors.New("status ticket tidak valid")
+	}
+	if err := ensureExists(tx, `SELECT COUNT(1) FROM ticket_priorities WHERE id = ? AND deleted_at IS NULL`, input.PriorityID); err != nil {
+		tx.Rollback()
+		return errors.New("priority ticket tidak valid")
+	}
+	if err := ensureExists(tx, `SELECT COUNT(1) FROM ticket_types WHERE id = ? AND deleted_at IS NULL`, input.TypeID); err != nil {
+		tx.Rollback()
+		return errors.New("type ticket tidak valid")
+	}
+	if err := ensureExists(tx, `SELECT COUNT(1) FROM users WHERE id = ? AND deleted_at IS NULL`, input.OwnerID); err != nil {
+		tx.Rollback()
+		return errors.New("owner ticket tidak valid")
+	}
+	if input.ResponsibleID > 0 {
+		if err := ensureExists(tx, `SELECT COUNT(1) FROM users WHERE id = ? AND deleted_at IS NULL`, input.ResponsibleID); err != nil {
+			tx.Rollback()
+			return errors.New("responsible ticket tidak valid")
+		}
+	}
+	if input.EpicID > 0 {
+		if err := ensureExists(tx, `SELECT COUNT(1) FROM epics WHERE id = ? AND project_id = ? AND deleted_at IS NULL`, input.EpicID, projectID); err != nil {
+			tx.Rollback()
+			return errors.New("epic ticket tidak valid")
+		}
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE tickets
+		SET
+			name = ?,
+			content = ?,
+			owner_id = ?,
+			responsible_id = ?,
+			status_id = ?,
+			type_id = ?,
+			priority_id = ?,
+			estimation = ?,
+			starts_at = ?,
+			ends_at = ?,
+			epic_id = ?,
+			updated_at = NOW()
+		WHERE id = ? AND deleted_at IS NULL
+	`,
+		input.Name,
+		htmlFromPlainText(input.Content),
+		input.OwnerID,
+		nullableInt(input.ResponsibleID),
+		input.StatusID,
+		input.TypeID,
+		input.PriorityID,
+		nullableEstimation(estimationValue),
+		nullableDate(input.StartsAt),
+		nullableDate(input.EndsAt),
+		nullableInt(input.EpicID),
+		input.ID,
+	); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if actorUserID > 0 && currentStatusID != input.StatusID {
+		if _, err := tx.Exec(`
+			INSERT INTO ticket_activities (ticket_id, old_status_id, new_status_id, user_id, created_at, updated_at)
+			VALUES (?, ?, ?, ?, NOW(), NOW())
+		`, input.ID, currentStatusID, input.StatusID, actorUserID); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (r *ManagementRepository) GetTicketComments(ticketID int) ([]models.TicketCommentItem, error) {
@@ -854,6 +1187,13 @@ func nullableEstimation(value float64) interface{} {
 	return value
 }
 
+func nullableInt(value int) interface{} {
+	if value <= 0 {
+		return nil
+	}
+	return value
+}
+
 func nullableIntPointer(value *int) interface{} {
 	if value == nil || *value <= 0 {
 		return nil
@@ -941,6 +1281,27 @@ func plainTextFromHTML(value string) string {
 	return cleaned
 }
 
+func htmlFromPlainText(value string) string {
+	normalized := strings.ReplaceAll(value, "\r\n", "\n")
+	normalized = strings.TrimSpace(normalized)
+	if normalized == "" {
+		return ""
+	}
+	lines := strings.Split(normalized, "\n")
+	for i := range lines {
+		lines[i] = html.EscapeString(lines[i])
+	}
+	return "<p>" + strings.Join(lines, "<br>") + "</p>"
+}
+
+func nullableDate(value string) interface{} {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return value
+}
+
 func formatHoursLabel(value float64) string {
 	if value <= 0 {
 		return "-"
@@ -961,4 +1322,15 @@ func initialsOrFallback(name string) string {
 		return "NA"
 	}
 	return value
+}
+
+func ensureExists(tx *sql.Tx, query string, args ...interface{}) error {
+	var count int
+	if err := tx.QueryRow(query, args...).Scan(&count); err != nil {
+		return err
+	}
+	if count <= 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }

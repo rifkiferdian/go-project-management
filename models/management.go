@@ -30,6 +30,35 @@ type TicketDetailPage struct {
 	Subscribers []TicketSubscriberItem
 }
 
+// TicketEditPage mewakili data halaman edit ticket.
+type TicketEditPage struct {
+	Form            TicketEditForm
+	StatusOptions   []TicketFormOption
+	PriorityOptions []TicketFormOption
+	TypeOptions     []TicketFormOption
+	UserOptions     []TicketUserOption
+	EpicOptions     []TicketEpicOption
+}
+
+// TicketEditForm menampung data form edit ticket.
+type TicketEditForm struct {
+	ID            int
+	ProjectID     int
+	Code          string
+	ProjectName   string
+	Name          string
+	Content       string
+	StatusID      int
+	PriorityID    int
+	TypeID        int
+	OwnerID       int
+	ResponsibleID int
+	EpicID        int
+	Estimation    string
+	StartsAt      string
+	EndsAt        string
+}
+
 // TicketDetail memuat informasi utama ticket.
 type TicketDetail struct {
 	ID                  int
@@ -101,6 +130,41 @@ type TicketSubscriberItem struct {
 	ID       int
 	Name     string
 	Initials string
+}
+
+// TicketFormOption dipakai untuk opsi select ticket.
+type TicketFormOption struct {
+	ID    int
+	Name  string
+	Color string
+}
+
+// TicketUserOption dipakai untuk opsi user pada form ticket.
+type TicketUserOption struct {
+	ID   int
+	Name string
+}
+
+// TicketEpicOption dipakai untuk opsi epic pada form ticket.
+type TicketEpicOption struct {
+	ID   int
+	Name string
+}
+
+// TicketUpdateInput menampung data update ticket dari form.
+type TicketUpdateInput struct {
+	ID            int
+	Name          string
+	Content       string
+	StatusID      int
+	PriorityID    int
+	TypeID        int
+	OwnerID       int
+	ResponsibleID int
+	EpicID        int
+	Estimation    string
+	StartsAt      string
+	EndsAt        string
 }
 
 // BoardColumn merepresentasikan kolom status pada board.

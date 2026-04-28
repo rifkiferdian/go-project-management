@@ -11,6 +11,7 @@ import (
 	"gobase-app/repositories"
 	"gobase-app/services"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -63,6 +64,53 @@ func TicketShow(c *gin.Context) {
 		"Hours":       pageData.Hours,
 		"Subscribers": pageData.Subscribers,
 	})
+}
+
+func TicketEdit(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"code_error": http.StatusBadRequest,
+			"error":      "ticket tidak valid",
+		})
+		return
+	}
+
+	renderTicketEditPage(c, id, nil, "")
+}
+
+func TicketUpdate(c *gin.Context) {
+	id, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("ticket_id")))
+	statusID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("status_id")))
+	priorityID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("priority_id")))
+	typeID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("type_id")))
+	ownerID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("owner_id")))
+	responsibleID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("responsible_id")))
+	epicID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("epic_id")))
+
+	input := models.TicketUpdateInput{
+		ID:            id,
+		Name:          c.PostForm("name"),
+		Content:       c.PostForm("content"),
+		StatusID:      statusID,
+		PriorityID:    priorityID,
+		TypeID:        typeID,
+		OwnerID:       ownerID,
+		ResponsibleID: responsibleID,
+		EpicID:        epicID,
+		Estimation:    c.PostForm("estimation"),
+		StartsAt:      c.PostForm("starts_at"),
+		EndsAt:        c.PostForm("ends_at"),
+	}
+
+	svc := managementService()
+	savedInput, err := svc.UpdateTicket(input, currentSessionUserID(c))
+	if err != nil {
+		renderTicketEditPage(c, input.ID, &savedInput, err.Error())
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(input.ID))
 }
 
 func BoardIndex(c *gin.Context) {
@@ -273,6 +321,52 @@ func managementService() *services.ManagementService {
 	}
 }
 
+func renderTicketEditPage(c *gin.Context, id int, old *models.TicketUpdateInput, message string) {
+	svc := managementService()
+	pageData, err := svc.GetTicketEditPage(id)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "ticket tidak ditemukan" {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "ticket tidak valid" {
+			statusCode = http.StatusBadRequest
+		}
+		c.HTML(statusCode, "error.html", gin.H{
+			"code_error": statusCode,
+			"error":      err.Error(),
+		})
+		return
+	}
+
+	if old != nil {
+		pageData.Form.ID = old.ID
+		pageData.Form.Name = old.Name
+		pageData.Form.Content = old.Content
+		pageData.Form.StatusID = old.StatusID
+		pageData.Form.PriorityID = old.PriorityID
+		pageData.Form.TypeID = old.TypeID
+		pageData.Form.OwnerID = old.OwnerID
+		pageData.Form.ResponsibleID = old.ResponsibleID
+		pageData.Form.EpicID = old.EpicID
+		pageData.Form.Estimation = old.Estimation
+		pageData.Form.StartsAt = old.StartsAt
+		pageData.Form.EndsAt = old.EndsAt
+	}
+
+	Render(c, "ticket_edit.html", gin.H{
+		"Title": "Edit Ticket",
+		"Page":  "ticket",
+		"Form":  pageData.Form,
+		"Error": message,
+
+		"StatusOptions":   pageData.StatusOptions,
+		"PriorityOptions": pageData.PriorityOptions,
+		"TypeOptions":     pageData.TypeOptions,
+		"UserOptions":     pageData.UserOptions,
+		"EpicOptions":     pageData.EpicOptions,
+	})
+}
+
 func normalizeRoadmapFormat(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "day":
@@ -282,4 +376,39 @@ func normalizeRoadmapFormat(value string) string {
 	default:
 		return "week"
 	}
+}
+
+func currentSessionUserID(c *gin.Context) int {
+	session := sessions.Default(c)
+
+	switch value := session.Get("user_id").(type) {
+	case int:
+		return value
+	case int64:
+		return int(value)
+	case float64:
+		return int(value)
+	case string:
+		id, _ := strconv.Atoi(strings.TrimSpace(value))
+		return id
+	}
+
+	switch value := session.Get("user").(type) {
+	case models.SessionUser:
+		return value.UserID
+	case map[string]interface{}:
+		switch raw := value["user_id"].(type) {
+		case int:
+			return raw
+		case int64:
+			return int(raw)
+		case float64:
+			return int(raw)
+		case string:
+			id, _ := strconv.Atoi(strings.TrimSpace(raw))
+			return id
+		}
+	}
+
+	return 0
 }

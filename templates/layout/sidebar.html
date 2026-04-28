@@ -26,7 +26,7 @@
             {{ if or (index .Permissions "List projects") (index .Permissions "List tickets") (index .Permissions "List sprints") }}
             <li class="pt-2">
                 <div class="px-3 py-3 text-[14px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:px-4">
-                    Management
+                    APP Management 
                 </div>
                 <ul class="mt-1 space-y-1 pl-2">
                     {{ if index .Permissions "List projects" }}
@@ -62,22 +62,28 @@
                 </ul>
             </li>
             {{ end }}
-            {{ if index .Permissions "List roles" }}
-            <li>
-                <a href="{{ baseURL "/role" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-semibold transition sm:gap-4 sm:px-4 sm:py-4 sm:text-[15px] {{ if or (eq .Page "role") (eq .Page "roleForm") (eq .Page "roleEdit") }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if or (eq .Page "role") (eq .Page "roleForm") (eq .Page "roleEdit") }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
-                    <i class="bx bx-shield-quarter text-xl"></i>
-                    <span>Roles</span>
-                </a>
+            <li class="pt-2">
+                <div class="px-3 py-3 text-[14px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:px-4">
+                    USER MANAGEMENT
+                </div>
+                {{ if index .Permissions "List roles" }}
+                    <li>
+                        <a href="{{ baseURL "/role" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-semibold transition sm:gap-4 sm:px-4 sm:py-4 sm:text-[15px] {{ if or (eq .Page "role") (eq .Page "roleForm") (eq .Page "roleEdit") }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if or (eq .Page "role") (eq .Page "roleForm") (eq .Page "roleEdit") }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-shield-quarter text-xl"></i>
+                            <span>Roles</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ if index .Permissions "List users" }}
+                    <li>
+                        <a href="{{ baseURL "/users" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-semibold transition sm:gap-4 sm:px-4 sm:py-4 sm:text-[15px] {{ if eq .Page "user" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "user" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-user text-xl"></i>
+                            <span>Users</span>
+                        </a>
+                    </li>
+                {{ end }}
             </li>
-            {{ end }}
-            {{ if index .Permissions "List users" }}
-            <li>
-                <a href="{{ baseURL "/users" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-semibold transition sm:gap-4 sm:px-4 sm:py-4 sm:text-[15px] {{ if eq .Page "user" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "user" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
-                    <i class="bx bx-user text-xl"></i>
-                    <span>Users</span>
-                </a>
-            </li>
-            {{ end }}
+            
             {{ if or (index .Permissions "List activities") (index .Permissions "List project statuses") (index .Permissions "List ticket statuses") (index .Permissions "List ticket types") (index .Permissions "List ticket priorities") }}
             <li class="pt-2">
                 <div class="px-3 py-3 text-[14px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:px-4">

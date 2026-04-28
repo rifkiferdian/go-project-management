@@ -35,6 +35,90 @@ func (s *ManagementService) GetTicketDetailPage(id int) (models.TicketDetailPage
 	return page, nil
 }
 
+func (s *ManagementService) GetTicketEditPage(id int) (models.TicketEditPage, error) {
+	if id <= 0 {
+		return models.TicketEditPage{}, errors.New("ticket tidak valid")
+	}
+
+	page, err := s.Repo.GetTicketEditPage(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.TicketEditPage{}, errors.New("ticket tidak ditemukan")
+		}
+		return models.TicketEditPage{}, err
+	}
+
+	return page, nil
+}
+
+func (s *ManagementService) UpdateTicket(input models.TicketUpdateInput, actorUserID int) (models.TicketUpdateInput, error) {
+	input.Name = strings.TrimSpace(input.Name)
+	input.Content = strings.TrimSpace(input.Content)
+	input.Estimation = strings.TrimSpace(input.Estimation)
+	input.StartsAt = strings.TrimSpace(input.StartsAt)
+	input.EndsAt = strings.TrimSpace(input.EndsAt)
+
+	if input.ID <= 0 {
+		return input, errors.New("ticket tidak valid")
+	}
+	if input.Name == "" {
+		return input, errors.New("nama ticket wajib diisi")
+	}
+	if input.StatusID <= 0 {
+		return input, errors.New("status wajib dipilih")
+	}
+	if input.PriorityID <= 0 {
+		return input, errors.New("priority wajib dipilih")
+	}
+	if input.TypeID <= 0 {
+		return input, errors.New("type wajib dipilih")
+	}
+	if input.OwnerID <= 0 {
+		return input, errors.New("owner wajib dipilih")
+	}
+	if input.ResponsibleID < 0 || input.EpicID < 0 {
+		return input, errors.New("form ticket tidak valid")
+	}
+
+	if (input.StartsAt == "") != (input.EndsAt == "") {
+		return input, errors.New("start date dan end date harus diisi bersamaan")
+	}
+	if input.StartsAt != "" && input.EndsAt != "" {
+		start, err := time.Parse("2006-01-02", input.StartsAt)
+		if err != nil {
+			return input, errors.New("format start date tidak valid")
+		}
+		end, err := time.Parse("2006-01-02", input.EndsAt)
+		if err != nil {
+			return input, errors.New("format end date tidak valid")
+		}
+		if end.Before(start) {
+			return input, errors.New("end date tidak boleh lebih kecil dari start date")
+		}
+	}
+
+	estimationValue := 0.0
+	if input.Estimation != "" {
+		value, err := strconv.ParseFloat(input.Estimation, 64)
+		if err != nil {
+			return input, errors.New("estimasi tidak valid")
+		}
+		if value < 0 {
+			return input, errors.New("estimasi tidak valid")
+		}
+		estimationValue = value
+	}
+
+	if err := s.Repo.UpdateTicket(input, estimationValue, actorUserID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return input, errors.New("ticket tidak ditemukan")
+		}
+		return input, err
+	}
+
+	return input, nil
+}
+
 func (s *ManagementService) GetBoardColumns() ([]models.BoardColumn, error) {
 	return s.Repo.GetBoardColumns()
 }

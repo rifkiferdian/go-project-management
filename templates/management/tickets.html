@@ -55,6 +55,7 @@
                                                 <th class="px-3 py-2 text-left font-semibold">Start Date</th>
                                                 <th class="px-3 py-2 text-left font-semibold">End Date</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Updated</th>
+                                                <th class="px-3 py-2 text-left font-semibold">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-slate-100">
@@ -89,10 +90,24 @@
                                                 <td class="px-3 py-3 text-slate-600">{{ .StartsAtDisplay }}</td>
                                                 <td class="px-3 py-3 text-slate-600">{{ .EndsAtDisplay }}</td>
                                                 <td class="px-3 py-3 text-slate-500">{{ .UpdatedAtDisplay }}</td>
+                                                <td class="px-3 py-3">
+                                                    <div class="flex flex-wrap gap-2">
+                                                        <a href="/tickets/{{ .ID }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                                                            <i class="bx bx-show text-sm"></i>
+                                                            View
+                                                        </a>
+                                                        {{ if index $.Permissions "Update ticket" }}
+                                                        <a href="/tickets/{{ .ID }}/edit" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100">
+                                                            <i class="bx bx-pen text-sm"></i>
+                                                            Edit
+                                                        </a>
+                                                        {{ end }}
+                                                    </div>
+                                                </td>
                                             </tr>
                                             {{ else }}
                                             <tr>
-                                                <td colspan="12" class="px-3 py-10 text-center text-sm text-slate-500">Belum ada ticket.</td>
+                                                <td colspan="13" class="px-3 py-10 text-center text-sm text-slate-500">Belum ada ticket.</td>
                                             </tr>
                                             {{ end }}
                                         </tbody>

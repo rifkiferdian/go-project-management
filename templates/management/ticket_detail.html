@@ -49,38 +49,39 @@
                 {{ template "header" . }}
                 <main class="flex-1 px-4 py-6 lg:px-8">
                     <div class="mx-auto w-full max-w-[1600px] space-y-6">
-                        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="space-y-4">
                             <div>
                                 <h1 class="text-[1.75rem] font-semibold tracking-tight text-slate-900">View Ticket</h1>
                             </div>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #16a34a;">
-                                    <i class="bx bx-bell text-base"></i>
-                                    Subscribe
-                                </button>
-                                <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                    <i class="bx bx-share-alt text-base"></i>
-                                    Share
-                                </button>
-                                <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #2563eb;">
-                                    <i class="bx bx-edit-alt text-base"></i>
-                                    Edit
-                                </button>
-                                <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #d97706;">
-                                    <i class="bx bx-time text-base"></i>
-                                    Log time
-                                </button>
-                                <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
-                                    <i class="bx bx-dots-vertical-rounded text-lg"></i>
-                                </button>
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <a href="/tickets" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-orange-200 hover:bg-orange-50 hover:text-[#f26419]">
+                                    <i class="bx bx-arrow-back text-base"></i>
+                                    Back to Tickets
+                                </a>
+                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                    <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #16a34a;">
+                                        <i class="bx bx-bell text-base"></i>
+                                        Subscribe
+                                    </button>
+                                    <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                                        <i class="bx bx-share-alt text-base"></i>
+                                        Share
+                                    </button>
+                                    {{ if index .Permissions "Update ticket" }}
+                                    <a href="/tickets/{{ .Ticket.ID }}/edit" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #2563eb;">
+                                        <i class="bx bx-edit-alt text-base"></i>
+                                        Edit
+                                    </a>
+                                    {{ end }}
+                                    <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #d97706;">
+                                        <i class="bx bx-time text-base"></i>
+                                        Log time
+                                    </button>
+                                    <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
+                                        <i class="bx bx-dots-vertical-rounded text-lg"></i>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-
-                        <div>
-                            <a href="/road-map" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-orange-200 hover:bg-orange-50 hover:text-[#f26419]">
-                                <i class="bx bx-arrow-back text-base"></i>
-                                Back to Road Map
-                            </a>
                         </div>
 
                         <div class="ticket-detail-split">
