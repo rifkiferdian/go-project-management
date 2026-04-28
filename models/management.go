@@ -21,6 +21,88 @@ type TicketListItem struct {
 	UpdatedAtDisplay string
 }
 
+// TicketDetailPage mewakili data lengkap halaman detail ticket.
+type TicketDetailPage struct {
+	Ticket      TicketDetail
+	Comments    []TicketCommentItem
+	Activities  []TicketActivityItem
+	Hours       []TicketHourItem
+	Subscribers []TicketSubscriberItem
+}
+
+// TicketDetail memuat informasi utama ticket.
+type TicketDetail struct {
+	ID                  int
+	Code                string
+	Name                string
+	ContentText         string
+	ProjectName         string
+	StatusName          string
+	StatusColor         string
+	PriorityName        string
+	PriorityColor       string
+	TypeName            string
+	TypeColor           string
+	OwnerName           string
+	OwnerInitials       string
+	ResponsibleName     string
+	ResponsibleInitials string
+	EpicName            string
+	Estimation          float64
+	EstimationText      string
+	LoggedHours         float64
+	LoggedHoursText     string
+	LoggedPercent       int
+	SubscribersCount    int
+	StartsAtDisplay     string
+	EndsAtDisplay       string
+	CreatedAtDisplay    string
+	CreatedAtRelative   string
+	UpdatedAtDisplay    string
+	UpdatedAtRelative   string
+}
+
+// TicketCommentItem merepresentasikan komentar pada ticket.
+type TicketCommentItem struct {
+	ID                int
+	UserName          string
+	UserInitials      string
+	Content           string
+	CreatedAtDisplay  string
+	CreatedAtRelative string
+}
+
+// TicketActivityItem merepresentasikan riwayat perpindahan status ticket.
+type TicketActivityItem struct {
+	ID                int
+	UserName          string
+	UserInitials      string
+	OldStatusName     string
+	NewStatusName     string
+	CreatedAtDisplay  string
+	CreatedAtRelative string
+}
+
+// TicketHourItem merepresentasikan log waktu pada ticket.
+type TicketHourItem struct {
+	ID                int
+	UserName          string
+	UserInitials      string
+	ActivityName      string
+	Comment           string
+	Value             float64
+	ValueText         string
+	CreatedAtDisplay  string
+	CreatedAtRelative string
+}
+
+// TicketSubscriberItem merepresentasikan subscriber ticket.
+type TicketSubscriberItem struct {
+	ID       int
+	Name     string
+	Initials string
+}
+
 // BoardColumn merepresentasikan kolom status pada board.
 type BoardColumn struct {
 	ID          int

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"database/sql"
 	"errors"
 	"gobase-app/models"
 	"gobase-app/repositories"
@@ -16,6 +17,22 @@ type ManagementService struct {
 
 func (s *ManagementService) GetTickets() ([]models.TicketListItem, error) {
 	return s.Repo.GetTickets()
+}
+
+func (s *ManagementService) GetTicketDetailPage(id int) (models.TicketDetailPage, error) {
+	if id <= 0 {
+		return models.TicketDetailPage{}, errors.New("ticket tidak valid")
+	}
+
+	page, err := s.Repo.GetTicketDetailPage(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.TicketDetailPage{}, errors.New("ticket tidak ditemukan")
+		}
+		return models.TicketDetailPage{}, err
+	}
+
+	return page, nil
 }
 
 func (s *ManagementService) GetBoardColumns() ([]models.BoardColumn, error) {

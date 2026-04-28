@@ -3,7 +3,10 @@ package repositories
 import (
 	"database/sql"
 	"fmt"
+	helpers "gobase-app/helper"
 	"gobase-app/models"
+	"html"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +15,8 @@ import (
 type ManagementRepository struct {
 	DB *sql.DB
 }
+
+var htmlTagPattern = regexp.MustCompile(`<[^>]+>`)
 
 func (r *ManagementRepository) GetTickets() ([]models.TicketListItem, error) {
 	rows, err := r.DB.Query(`
@@ -79,6 +84,274 @@ func (r *ManagementRepository) GetTickets() ([]models.TicketListItem, error) {
 		item.StartsAtDisplay = formatOptionalDate(startsAtRaw)
 		item.EndsAtDisplay = formatOptionalDate(endsAtRaw)
 		item.UpdatedAtDisplay = updatedAt.Format("02 Jan 2006 15:04")
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) GetTicketDetailPage(id int) (models.TicketDetailPage, error) {
+	detail, err := r.GetTicketDetail(id)
+	if err != nil {
+		return models.TicketDetailPage{}, err
+	}
+
+	comments, err := r.GetTicketComments(id)
+	if err != nil {
+		return models.TicketDetailPage{}, err
+	}
+
+	activities, err := r.GetTicketActivities(id)
+	if err != nil {
+		return models.TicketDetailPage{}, err
+	}
+
+	hours, err := r.GetTicketHours(id)
+	if err != nil {
+		return models.TicketDetailPage{}, err
+	}
+
+	subscribers, err := r.GetTicketSubscribers(id)
+	if err != nil {
+		return models.TicketDetailPage{}, err
+	}
+
+	return models.TicketDetailPage{
+		Ticket:      detail,
+		Comments:    comments,
+		Activities:  activities,
+		Hours:       hours,
+		Subscribers: subscribers,
+	}, nil
+}
+
+func (r *ManagementRepository) GetTicketDetail(id int) (models.TicketDetail, error) {
+	var (
+		item         models.TicketDetail
+		contentRaw   string
+		startsAtRaw  sql.NullTime
+		endsAtRaw    sql.NullTime
+		createdAtRaw sql.NullTime
+		updatedAtRaw sql.NullTime
+	)
+
+	err := r.DB.QueryRow(`
+		SELECT
+			t.id,
+			t.code,
+			t.name,
+			t.content,
+			p.name AS project_name,
+			ts.name AS status_name,
+			COALESCE(ts.color, '#cecece') AS status_color,
+			tp.name AS priority_name,
+			COALESCE(tp.color, '#cecece') AS priority_color,
+			tt.name AS type_name,
+			COALESCE(tt.color, '#cecece') AS type_color,
+			owner.name AS owner_name,
+			COALESCE(responsible.name, '-') AS responsible_name,
+			COALESCE(e.name, '-') AS epic_name,
+			COALESCE(t.estimation, 0) AS estimation,
+			COALESCE((
+				SELECT SUM(th.value)
+				FROM ticket_hours th
+				WHERE th.ticket_id = t.id
+			), 0) AS logged_hours,
+			COALESCE((
+				SELECT COUNT(1)
+				FROM ticket_subscribers sub
+				WHERE sub.ticket_id = t.id
+			), 0) AS subscribers_count,
+			t.starts_at,
+			t.ends_at,
+			t.created_at,
+			t.updated_at
+		FROM tickets t
+		JOIN projects p ON p.id = t.project_id
+		JOIN ticket_statuses ts ON ts.id = t.status_id
+		JOIN ticket_priorities tp ON tp.id = t.priority_id
+		JOIN ticket_types tt ON tt.id = t.type_id
+		JOIN users owner ON owner.id = t.owner_id
+		LEFT JOIN users responsible ON responsible.id = t.responsible_id
+		LEFT JOIN epics e ON e.id = t.epic_id
+		WHERE t.id = ? AND t.deleted_at IS NULL
+	`, id).Scan(
+		&item.ID,
+		&item.Code,
+		&item.Name,
+		&contentRaw,
+		&item.ProjectName,
+		&item.StatusName,
+		&item.StatusColor,
+		&item.PriorityName,
+		&item.PriorityColor,
+		&item.TypeName,
+		&item.TypeColor,
+		&item.OwnerName,
+		&item.ResponsibleName,
+		&item.EpicName,
+		&item.Estimation,
+		&item.LoggedHours,
+		&item.SubscribersCount,
+		&startsAtRaw,
+		&endsAtRaw,
+		&createdAtRaw,
+		&updatedAtRaw,
+	)
+	if err != nil {
+		return models.TicketDetail{}, err
+	}
+
+	item.ContentText = plainTextFromHTML(contentRaw)
+	item.OwnerInitials = initialsOrFallback(item.OwnerName)
+	item.ResponsibleInitials = initialsOrFallback(item.ResponsibleName)
+	item.EstimationText = formatHoursLabel(item.Estimation)
+	item.LoggedHoursText = formatHoursLabel(item.LoggedHours)
+	item.LoggedPercent = percentFromHours(item.LoggedHours, item.Estimation)
+	item.StartsAtDisplay = formatOptionalDate(startsAtRaw)
+	item.EndsAtDisplay = formatOptionalDate(endsAtRaw)
+	item.CreatedAtDisplay = formatTimestamp(createdAtRaw)
+	item.CreatedAtRelative = relativeTime(createdAtRaw)
+	item.UpdatedAtDisplay = formatTimestamp(updatedAtRaw)
+	item.UpdatedAtRelative = relativeTime(updatedAtRaw)
+
+	return item, nil
+}
+
+func (r *ManagementRepository) GetTicketComments(ticketID int) ([]models.TicketCommentItem, error) {
+	rows, err := r.DB.Query(`
+		SELECT
+			tc.id,
+			u.name,
+			tc.content,
+			tc.created_at
+		FROM ticket_comments tc
+		JOIN users u ON u.id = tc.user_id
+		WHERE tc.ticket_id = ? AND tc.deleted_at IS NULL
+		ORDER BY tc.created_at ASC, tc.id ASC
+	`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketCommentItem
+	for rows.Next() {
+		var (
+			item         models.TicketCommentItem
+			createdAtRaw sql.NullTime
+		)
+		if err := rows.Scan(&item.ID, &item.UserName, &item.Content, &createdAtRaw); err != nil {
+			return nil, err
+		}
+		item.UserInitials = initialsOrFallback(item.UserName)
+		item.CreatedAtDisplay = formatTimestamp(createdAtRaw)
+		item.CreatedAtRelative = relativeTime(createdAtRaw)
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) GetTicketActivities(ticketID int) ([]models.TicketActivityItem, error) {
+	rows, err := r.DB.Query(`
+		SELECT
+			ta.id,
+			u.name,
+			old_ts.name AS old_status_name,
+			new_ts.name AS new_status_name,
+			ta.created_at
+		FROM ticket_activities ta
+		JOIN users u ON u.id = ta.user_id
+		JOIN ticket_statuses old_ts ON old_ts.id = ta.old_status_id
+		JOIN ticket_statuses new_ts ON new_ts.id = ta.new_status_id
+		WHERE ta.ticket_id = ?
+		ORDER BY ta.created_at DESC, ta.id DESC
+	`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketActivityItem
+	for rows.Next() {
+		var (
+			item         models.TicketActivityItem
+			createdAtRaw sql.NullTime
+		)
+		if err := rows.Scan(&item.ID, &item.UserName, &item.OldStatusName, &item.NewStatusName, &createdAtRaw); err != nil {
+			return nil, err
+		}
+		item.UserInitials = initialsOrFallback(item.UserName)
+		item.CreatedAtDisplay = formatTimestamp(createdAtRaw)
+		item.CreatedAtRelative = relativeTime(createdAtRaw)
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) GetTicketHours(ticketID int) ([]models.TicketHourItem, error) {
+	rows, err := r.DB.Query(`
+		SELECT
+			th.id,
+			u.name,
+			COALESCE(a.name, '-') AS activity_name,
+			COALESCE(th.comment, '') AS comment,
+			th.value,
+			th.created_at
+		FROM ticket_hours th
+		JOIN users u ON u.id = th.user_id
+		LEFT JOIN activities a ON a.id = th.activity_id
+		WHERE th.ticket_id = ?
+		ORDER BY th.created_at DESC, th.id DESC
+	`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketHourItem
+	for rows.Next() {
+		var (
+			item         models.TicketHourItem
+			createdAtRaw sql.NullTime
+		)
+		if err := rows.Scan(&item.ID, &item.UserName, &item.ActivityName, &item.Comment, &item.Value, &createdAtRaw); err != nil {
+			return nil, err
+		}
+		item.UserInitials = initialsOrFallback(item.UserName)
+		item.ValueText = formatHours(item.Value)
+		item.CreatedAtDisplay = formatTimestamp(createdAtRaw)
+		item.CreatedAtRelative = relativeTime(createdAtRaw)
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) GetTicketSubscribers(ticketID int) ([]models.TicketSubscriberItem, error) {
+	rows, err := r.DB.Query(`
+		SELECT
+			u.id,
+			u.name
+		FROM ticket_subscribers ts
+		JOIN users u ON u.id = ts.user_id
+		WHERE ts.ticket_id = ?
+		ORDER BY u.name ASC
+	`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketSubscriberItem
+	for rows.Next() {
+		var item models.TicketSubscriberItem
+		if err := rows.Scan(&item.ID, &item.Name); err != nil {
+			return nil, err
+		}
+		item.Initials = initialsOrFallback(item.Name)
 		items = append(items, item)
 	}
 
@@ -600,4 +873,92 @@ func optionalDateISO(value sql.NullTime) string {
 		return ""
 	}
 	return value.Time.Format("2006-01-02")
+}
+
+func formatTimestamp(value sql.NullTime) string {
+	if !value.Valid {
+		return "-"
+	}
+	return value.Time.Format("2006-01-02 3:04 PM")
+}
+
+func relativeTime(value sql.NullTime) string {
+	if !value.Valid {
+		return ""
+	}
+
+	now := time.Now()
+	diff := now.Sub(value.Time)
+	if diff < 0 {
+		diff = 0
+	}
+
+	switch {
+	case diff < time.Minute:
+		return "just now"
+	case diff < time.Hour:
+		return strconv.Itoa(int(diff.Minutes())) + " minutes ago"
+	case diff < 24*time.Hour:
+		return strconv.Itoa(int(diff.Hours())) + " hours ago"
+	default:
+		return strconv.Itoa(int(diff.Hours()/24)) + " days ago"
+	}
+}
+
+func percentFromHours(total, estimation float64) int {
+	if estimation <= 0 {
+		if total > 0 {
+			return 100
+		}
+		return 0
+	}
+	value := int((total / estimation) * 100)
+	if value < 0 {
+		return 0
+	}
+	return value
+}
+
+func plainTextFromHTML(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "-"
+	}
+
+	replacer := strings.NewReplacer(
+		"<br>", "\n",
+		"<br/>", "\n",
+		"<br />", "\n",
+		"</p>", "\n\n",
+		"</div>", "\n",
+	)
+	normalized := replacer.Replace(value)
+	cleaned := htmlTagPattern.ReplaceAllString(normalized, "")
+	cleaned = html.UnescapeString(cleaned)
+	cleaned = strings.TrimSpace(cleaned)
+	if cleaned == "" {
+		return "-"
+	}
+	return cleaned
+}
+
+func formatHoursLabel(value float64) string {
+	if value <= 0 {
+		return "-"
+	}
+	if value == 1 {
+		return "1 hour"
+	}
+	return trimFloat(value) + " hours"
+}
+
+func initialsOrFallback(name string) string {
+	trimmed := strings.TrimSpace(name)
+	if trimmed == "" || trimmed == "-" {
+		return "NA"
+	}
+	value := helpers.Initials(trimmed)
+	if value == "" {
+		return "NA"
+	}
+	return value
 }

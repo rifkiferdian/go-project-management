@@ -21,7 +21,7 @@
                 min-height: 100%;
             }
             .gmainleft {
-                width: 841px;
+                width: 720px;
                 flex: 0 0 841px;
                 border-right: 1px solid #dbe3ef;
                 background: #fff;
@@ -53,14 +53,14 @@
                 width: 255px;
             }
             .gres {
-                width: 130px;
+                width: 100px;
             }
             .gcomp {
-                width: 130px;
+                width: 90px;
             }
             .gstartdate,
             .genddate {
-                width: 141px;
+                width: 112px;
             }
             .gselector {
                 display: flex;
@@ -196,8 +196,10 @@
                 {{ template "header" . }}
                 <main class="flex-1 px-3 py-5 lg:px-6">
                     <div class="mx-auto w-full max-w-[1580px] space-y-5">
-                        <div>
-                            <h1 class="text-[2.1rem] font-semibold tracking-tight text-slate-900">Road Map</h1>
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                                <h1 style="margin: 25px;" class="text-[1.75rem] font-semibold tracking-tight text-slate-900">Road Map</h1>
+                            </div>
                         </div>
 
                         <section class="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
@@ -227,7 +229,7 @@
                                         </button>
                                     </div>
                                 </div>
-                            </div>
+                            </div><br>
 
                             <div class="mt-5 gantt-shell">
                                 <div class="gchartcontainer">

@@ -30,6 +30,41 @@ func TicketIndex(c *gin.Context) {
 	})
 }
 
+func TicketShow(c *gin.Context) {
+	svc := managementService()
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"code_error": http.StatusBadRequest,
+			"error":      "ticket tidak valid",
+		})
+		return
+	}
+
+	pageData, err := svc.GetTicketDetailPage(id)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "ticket tidak ditemukan" {
+			statusCode = http.StatusNotFound
+		}
+		c.HTML(statusCode, "error.html", gin.H{
+			"code_error": statusCode,
+			"error":      err.Error(),
+		})
+		return
+	}
+
+	Render(c, "ticket_detail.html", gin.H{
+		"Title":       "View Ticket",
+		"Page":        "ticket",
+		"Ticket":      pageData.Ticket,
+		"Comments":    pageData.Comments,
+		"Activities":  pageData.Activities,
+		"Hours":       pageData.Hours,
+		"Subscribers": pageData.Subscribers,
+	})
+}
+
 func BoardIndex(c *gin.Context) {
 	svc := managementService()
 
