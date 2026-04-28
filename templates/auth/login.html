@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{{ if .Title }}{{ .Title }}{{ else }}Login{{ end }}</title>
+
+        <link rel="stylesheet" href="/assets/fonts/google/plus-jakarta-sans.css">
+        <link rel="stylesheet" href="/assets/css/tailwind.css">
+        <link href="/assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet" />
+    </head>
+    <body class="min-h-screen bg-slate-100 font-display text-slate-900" style="background: linear-gradient(rgba(15, 23, 42, 0.22), rgba(15, 23, 42, 0.28)), linear-gradient(rgba(255, 255, 255, 0.56), rgba(255, 255, 255, 0.62)), url('https://d3ciiv7axt9x6p.cloudfront.net/blog/original/65b1e041dbfd7_ori.png'); background-position: center; background-size: cover;">
+        <div class="flex min-h-screen items-center justify-center p-4">
+            <section class="w-full max-w-md rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-2xl backdrop-blur">
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-orange-50 text-[#f26419]">
+                    <i class="bx bx-briefcase-alt-2 text-2xl"></i>
+                </div>
+
+                <h1 class="mt-5 text-center text-3xl font-semibold">Project <span class="text-[#f26419]">Management</span></h1>
+                <p class="mt-2 text-center text-sm text-slate-500">Rewrite bertahap dari Laravel ke Golang untuk workspace project dan ticketing.</p>
+
+                {{ if .Error }}
+                <div class="mt-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                    {{ .Error }}
+                </div>
+                {{ end }}
+
+                <form action="/login" method="post" class="mt-6 space-y-4">
+                    <div>
+                        <label for="email" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Email</label>
+                        <div class="mt-2 flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3">
+                            <i class="bx bx-envelope text-slate-400"></i>
+                            <input id="email" name="email" type="email" class="w-full border-0 bg-transparent px-3 py-3 text-sm outline-none" placeholder="Masukkan email Anda" required autocomplete="email">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="password" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Password</label>
+                        <div class="mt-2 flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3">
+                            <i class="bx bx-lock-alt text-slate-400"></i>
+                            <input id="password" name="password" type="password" class="w-full border-0 bg-transparent px-3 py-3 text-sm outline-none" placeholder="Masukkan password" required autocomplete="current-password">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#f26419] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#dc5a15]">
+                        <span>Masuk</span>
+                        <i class="bx bx-log-in-circle"></i>
+                    </button>
+                </form>
+            </section>
+        </div>
+    </body>
+</html>

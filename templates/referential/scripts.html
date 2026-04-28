@@ -1,0 +1,104 @@
+{{ define "referential-scripts" }}
+<script src="/assets/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<script>
+    function normalizeColorValue(value) {
+        if (!value) return '#cecece';
+        return value.trim() || '#cecece';
+    }
+
+    function setColorPreview(previewId, value) {
+        var preview = document.getElementById(previewId);
+        if (!preview) return;
+        preview.style.backgroundColor = normalizeColorValue(value);
+    }
+
+    function bindColorPreview(inputId, previewId) {
+        var input = document.getElementById(inputId);
+        if (!input) return;
+        var sync = function () {
+            setColorPreview(previewId, input.value);
+        };
+        input.addEventListener('input', sync);
+        input.addEventListener('change', sync);
+        sync();
+    }
+
+    function initColorSwatches() {
+        document.querySelectorAll('[data-color-swatch]').forEach(function (swatch) {
+            swatch.style.backgroundColor = normalizeColorValue(swatch.getAttribute('data-color'));
+        });
+    }
+
+    function openModal(modalId) {
+        var modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function closeModal(modal) {
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function confirmDelete(title, text, url) {
+        Swal.fire({
+            title: title,
+            text: text,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, hapus',
+            cancelButtonText: 'Batal'
+        }).then(function (result) {
+            if (result.isConfirmed && url) {
+                window.location.href = url;
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initColorSwatches();
+        var sidebar = document.getElementById('app-sidebar');
+        var overlay = document.getElementById('sidebar-overlay');
+        var toggleButtons = document.querySelectorAll('[data-sidebar-toggle]');
+
+        function closeSidebar() {
+            if (!sidebar) return;
+            sidebar.classList.add('-translate-x-full');
+            if (overlay) overlay.classList.add('hidden');
+            if (!document.querySelector('[data-modal].flex')) document.body.classList.remove('overflow-hidden');
+        }
+
+        function openSidebar() {
+            if (!sidebar) return;
+            sidebar.classList.remove('-translate-x-full');
+            if (overlay) overlay.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        toggleButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                if (sidebar.classList.contains('-translate-x-full')) openSidebar(); else closeSidebar();
+            });
+        });
+        if (overlay) overlay.addEventListener('click', closeSidebar);
+
+        document.querySelectorAll('[data-modal-open]').forEach(function (trigger) {
+            trigger.addEventListener('click', function () {
+                var target = trigger.getAttribute('data-modal-open');
+                if (target) openModal(target);
+            });
+        });
+        document.querySelectorAll('[data-modal-close]').forEach(function (close) {
+            close.addEventListener('click', function () {
+                closeModal(close.closest('[data-modal]'));
+            });
+        });
+    });
+</script>
+{{ end }}

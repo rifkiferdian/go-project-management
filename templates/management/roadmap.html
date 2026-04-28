@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{{ .Title }}</title>
+
+        <link rel="stylesheet" href="/assets/fonts/google/plus-jakarta-sans.css">
+        <link rel="stylesheet" href="/assets/css/tailwind.css">
+        <link href="/assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet" />
+        <style>
+            .gantt-shell {
+                width: 100%;
+                overflow: hidden;
+                border: 1px solid #dbe3ef;
+                border-radius: 18px;
+                background: #fff;
+            }
+            .gchartcontainer {
+                display: flex;
+                min-height: 100%;
+            }
+            .gmainleft {
+                width: 841px;
+                flex: 0 0 841px;
+                border-right: 1px solid #dbe3ef;
+                background: #fff;
+            }
+            .gmainright {
+                min-width: 0;
+                flex: 1 1 auto;
+                background: #fff;
+            }
+            .gtasktableh,
+            .gtasktable,
+            .gcharttableh,
+            .gcharttablef {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+            }
+            .gtasktableh td,
+            .gtasktable td,
+            .gcharttableh td,
+            .gcharttablef td {
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .gtasklist {
+                width: 44px;
+                min-width: 44px;
+            }
+            .gtaskname {
+                width: 255px;
+            }
+            .gres {
+                width: 130px;
+            }
+            .gcomp {
+                width: 130px;
+            }
+            .gstartdate,
+            .genddate {
+                width: 141px;
+            }
+            .gselector {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                height: 32px;
+                color: #5f687a;
+                font-size: 14px;
+            }
+            .gformlabel {
+                padding: 1px 6px;
+                border-radius: 4px;
+                color: #5f687a;
+            }
+            .gselected {
+                background: #eaf1ff;
+                color: #4f88eb;
+                font-weight: 600;
+            }
+            .gtaskheading {
+                height: 32px;
+                padding: 0 8px 8px;
+                vertical-align: bottom;
+                text-align: center;
+                color: #5f687a;
+                font-size: 13px;
+                font-weight: 700;
+            }
+            .gtasknamecell,
+            .gtaskdatacell {
+                height: 32px;
+                padding: 0 10px;
+                color: #4b5563;
+                font-size: 13px;
+            }
+            .gtasknamecell {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .gfoldercollapse {
+                color: #7b8796;
+                font-weight: 600;
+            }
+            .ggroupitem .gtasknamecell {
+                font-size: 15px;
+                font-weight: 700;
+                color: #4b5563;
+            }
+            .glineitem .gtasknamecell {
+                padding-left: 34px;
+            }
+            .gmajorheading,
+            .gminorheading {
+                border-left: 1px solid #e2e8f0;
+                text-align: center;
+                font-weight: 700;
+                color: #5f687a;
+            }
+            .gmajorheading:first-child,
+            .gminorheading:first-child {
+                border-left: 0;
+            }
+            .gmajorheading div {
+                height: 28px;
+                line-height: 28px;
+                font-size: 13px;
+            }
+            .gminorheading div {
+                height: 36px;
+                line-height: 36px;
+                font-size: 13px;
+            }
+            .gchart-scroll {
+                overflow-x: auto;
+                overflow-y: hidden;
+            }
+            .gchart-canvas {
+                position: relative;
+            }
+            .gchart-row {
+                position: relative;
+                height: 32px;
+                border-bottom: 1px solid #eef2f7;
+                background-color: #fff;
+            }
+            .gchart-grid {
+                position: absolute;
+                inset: 0;
+                background-repeat: repeat;
+                background-position: left top;
+            }
+            .gcurwrap {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+            }
+            .gcurshade {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                background: rgba(198, 194, 255, 0.55);
+            }
+            .gcurline {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                width: 1px;
+                background: #3848ff;
+            }
+            .gtaskbarcontainer {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                height: 28px;
+            }
+            .g-custom-task {
+                height: 28px;
+                overflow: hidden;
+                border-radius: 2px;
+                background: #4f88eb;
+            }
+            .g-custom-taskcomplete {
+                height: 100%;
+                background: #35c65a;
+            }
+            .ggroupcaption,
+            .gcaption {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                left: 8px;
+                color: #5f687a;
+                font-size: 12px;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+            .glineitem .gcaption {
+                left: 12px;
+            }
+            .gfooterblank {
+                height: 36px;
+                border-top: 1px solid #e2e8f0;
+            }
+        </style>
+    </head>
+    <body class="bg-slate-100 font-display text-slate-900">
+        <div class="flex min-h-screen">
+            {{ template "sidebar" . }}
+            <div class="flex min-h-screen min-w-0 flex-1 flex-col">
+                {{ template "header" . }}
+                <main class="flex-1 px-3 py-5 lg:px-6">
+                    <div class="mx-auto w-full max-w-[1580px] space-y-5">
+                        <div>
+                            <h1 class="text-[2.1rem] font-semibold tracking-tight text-slate-900">Road Map</h1>
+                        </div>
+
+                        <section class="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+                            {{ if .RoadmapError }}
+                            <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{{ .RoadmapError }}</div>
+                            {{ end }}
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <form id="roadmap-filter-form" method="get" action="/road-map" class="flex min-w-0 items-center gap-3">
+                                        <input type="hidden" name="format" value="{{ .Format }}">
+                                        <select id="roadmap-project-filter" name="project_id" class="h-11 w-full max-w-[420px] min-w-[280px] rounded-xl border border-slate-300 bg-white px-4 text-[15px] text-slate-700 outline-none shadow-sm">
+                                            <option value="" {{ if le $.SelectedProjectID 0 }}selected{{ end }}>Pilih project</option>
+                                            {{ range .ProjectOptions }}
+                                            <option value="{{ .ID }}" {{ if eq .ID $.SelectedProjectID }}selected{{ end }}>{{ .Name }}</option>
+                                            {{ end }}
+                                        </select>
+                                    </form>
+
+                                    <div class="flex shrink-0 items-center gap-3">
+                                        <button type="button" data-modal-open="epicModal" class="inline-flex h-9 items-center gap-2 rounded-md px-4 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #4f88eb;">
+                                            <i class="bx bx-plus text-base"></i>
+                                            Epic
+                                        </button>
+                                        <button type="button" data-modal-open="ticketModal" class="inline-flex h-9 items-center gap-2 rounded-md px-4 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #22c55e;">
+                                            <i class="bx bx-plus text-base"></i>
+                                            Ticket
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 gantt-shell">
+                                <div class="gchartcontainer">
+                                    <div class="gmainleft">
+                                        <table class="gtasktableh">
+                                            <tbody>
+                                                <tr>
+                                                    <td class="gtasklist">&nbsp;</td>
+                                                    <td class="gspanning gtaskname" colspan="5">
+                                                        <div class="gselector">
+                                                            <span>Format:</span>
+                                                            <a href="/road-map?format=day{{ if gt .SelectedProjectID 0 }}&project_id={{ .SelectedProjectID }}{{ end }}" class="gformlabel {{ if eq .Format "day" }}gselected{{ end }}">Day</a>
+                                                            <a href="/road-map?format=week{{ if gt .SelectedProjectID 0 }}&project_id={{ .SelectedProjectID }}{{ end }}" class="gformlabel {{ if eq .Format "week" }}gselected{{ end }}">Week</a>
+                                                            <a href="/road-map?format=month{{ if gt .SelectedProjectID 0 }}&project_id={{ .SelectedProjectID }}{{ end }}" class="gformlabel {{ if eq .Format "month" }}gselected{{ end }}">Month</a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="gtasklist">&nbsp;</td>
+                                                    <td class="gtaskheading gtaskname">&nbsp;</td>
+                                                    <td class="gtaskheading gres">Resource</td>
+                                                    <td class="gtaskheading gcomp">% Comp.</td>
+                                                    <td class="gtaskheading gstartdate">Start Date</td>
+                                                    <td class="gtaskheading genddate">End Date</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <table class="gtasktable">
+                                            <tbody>
+                                                {{ range .Rows }}
+                                                <tr class="{{ if .ShowBar }}ggroupitem{{ else }}glineitem{{ end }} roadmap-row" data-display="table-row" data-roadmap-search="{{ .SearchText }}">
+                                                    <td class="gtasklist">&nbsp;</td>
+                                                    <td class="gtaskname gtasknamecell">
+                                                        <div class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                                                            {{ if .ShowBar }}<span class="gfoldercollapse">-</span>{{ end }}
+                                                            <span>{{ if .IsChild }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ end }}{{ .Name }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="gres gtaskdatacell text-center">{{ .Resource }}</td>
+                                                    <td class="gcomp gtaskdatacell text-center font-semibold">{{ .ProgressLabel }}</td>
+                                                    <td class="gstartdate gtaskdatacell text-center font-semibold">{{ .StartDateLabel }}</td>
+                                                    <td class="genddate gtaskdatacell text-center font-semibold">{{ .EndDateLabel }}</td>
+                                                </tr>
+                                                {{ else }}
+                                                <tr>
+                                                    <td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">Belum ada data roadmap.</td>
+                                                </tr>
+                                                {{ end }}
+                                                <tr>
+                                                    <td class="gtasklist">&nbsp;</td>
+                                                    <td class="gfooterblank" colspan="5">&nbsp;</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="gmainright">
+                                        <div id="roadmap-scroll" class="gchart-scroll">
+                                            <div class="gchart-canvas" style="width: {{ .TimelineWidth }}px;">
+                                                <table class="gcharttableh" style="width: {{ .TimelineWidth }}px;">
+                                                    <tbody>
+                                                        <tr>
+                                                            {{ range .YearGroups }}
+                                                            <td class="gmajorheading" colspan="{{ .Count }}"><div style="width: {{ .WidthPx }}px;">{{ .Label }}</div></td>
+                                                            {{ end }}
+                                                        </tr>
+                                                        <tr class="footerdays">
+                                                            {{ range .Weeks }}
+                                                            <td class="gminorheading"><div style="width: {{ $.ColumnWidth }}px;">{{ .DateLabel }}</div></td>
+                                                            {{ end }}
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+
+                                                <div id="roadmap-rows-right">
+                                                    {{ range .Rows }}
+                                                    <div class="gchart-row {{ if .ShowBar }}ggroupitem{{ else }}glineitem{{ end }} roadmap-row" data-display="block" data-roadmap-search="{{ .SearchText }}">
+                                                        <div class="gcurwrap">
+                                                            <div class="gcurshade" style="left: {{ $.CurrentMarkerLeft }}px; width: {{ $.CurrentMarkerWidth }}px;"></div>
+                                                            <div class="gcurline" style="left: {{ $.CurrentMarkerLeft }}px;"></div>
+                                                        </div>
+                                                        <div class="gchart-grid" style="background-image: repeating-linear-gradient(to right, rgba(226, 232, 240, 0.95) 0, rgba(226, 232, 240, 0.95) 1px, transparent 1px, transparent {{ $.ColumnWidth }}px);"></div>
+                                                        {{ if .ShowBar }}
+                                                        <div data-roadmap-bar data-bar-left="{{ .BarLeftPx }}" class="gtaskbarcontainer" style="left: {{ .BarLeftPx }}px; width: {{ .BarWidthPx }}px;">
+                                                            <div class="g-custom-task" style="width: {{ .BarWidthPx }}px;">
+                                                                <div class="g-custom-taskcomplete" style="width: {{ .BarProgressPct }}%;"></div>
+                                                            </div>
+                                                        </div>
+                                                        {{ end }}
+                                                    </div>
+                                                    {{ else }}
+                                                    <div class="gchart-row"></div>
+                                                    {{ end }}
+                                                </div>
+
+                                                <table class="gcharttablef" style="width: {{ .TimelineWidth }}px;">
+                                                    <tfoot>
+                                                        <tr class="footerdays">
+                                                            {{ range .Weeks }}
+                                                            <td class="gminorheading"><div style="width: {{ $.ColumnWidth }}px;">{{ .DateLabel }}</div></td>
+                                                            {{ end }}
+                                                        </tr>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </main>
+                {{ template "footer" . }}
+            </div>
+        </div>
+        <div data-modal class="fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto p-4 sm:items-center sm:p-6" id="epicModal">
+            <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
+            <div class="relative w-full max-w-md rounded-[24px] bg-white p-4 shadow-xl sm:p-5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-lg font-semibold">Create Epic</h2>
+                        <p class="mt-1 text-sm text-slate-500">Tambahkan epic baru ke timeline roadmap.</p>
+                    </div>
+                    <button type="button" data-modal-close class="text-slate-400 hover:text-slate-600"><i class="bx bx-x text-2xl"></i></button>
+                </div>
+                <form action="/road-map/epics" method="post" class="mt-6 space-y-4">
+                    <input type="hidden" name="format" value="{{ .Format }}">
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Project</label>
+                        <select name="project_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#4f88eb] focus:ring-2 focus:ring-[#4f88eb]/10">
+                            <option value="">Pilih project</option>
+                            {{ range .ProjectOptions }}
+                            <option value="{{ .ID }}">{{ .Name }}</option>
+                            {{ end }}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Epic Name</label>
+                        <input name="name" value="{{ with .EpicOld }}{{ .Name }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#4f88eb] focus:ring-2 focus:ring-[#4f88eb]/10">
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Start Date</label>
+                            <input type="date" name="starts_at" value="{{ with .EpicOld }}{{ .StartsAt }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#4f88eb] focus:ring-2 focus:ring-[#4f88eb]/10">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">End Date</label>
+                            <input type="date" name="ends_at" value="{{ with .EpicOld }}{{ .EndsAt }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#4f88eb] focus:ring-2 focus:ring-[#4f88eb]/10">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 border-t border-slate-100 pt-4">
+                        <button type="button" data-modal-close class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600">Batal</button>
+                        <button type="submit" class="rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #4f88eb;">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div data-modal class="fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto p-4 sm:items-center sm:p-6" id="ticketModal">
+            <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
+            <div class="relative w-full max-w-md rounded-[24px] bg-white p-4 shadow-xl sm:p-5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-lg font-semibold">Create Ticket</h2>
+                        <p class="mt-1 text-sm text-slate-500">Tambahkan ticket baru untuk epic atau project terkait.</p>
+                    </div>
+                    <button type="button" data-modal-close class="text-slate-400 hover:text-slate-600"><i class="bx bx-x text-2xl"></i></button>
+                </div>
+                <form action="/road-map/tickets" method="post" class="mt-6 space-y-4">
+                    <input type="hidden" name="format" value="{{ .Format }}">
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Project</label>
+                        <select name="project_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                            <option value="">Pilih project</option>
+                            {{ range .ProjectOptions }}
+                            <option value="{{ .ID }}">{{ .Name }}</option>
+                            {{ end }}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Epic</label>
+                        <select name="epic_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                            <option value="">Tanpa epic</option>
+                            {{ range .EpicOptions }}
+                            <option value="{{ .ID }}">{{ .ProjectName }} - {{ .Name }}</option>
+                            {{ end }}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ticket Name</label>
+                        <input name="name" value="{{ with .TicketOld }}{{ .Name }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</label>
+                            <select name="resource_user_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                                <option value="">Pilih user</option>
+                                {{ range .UserOptions }}
+                                <option value="{{ .ID }}">{{ .Name }}</option>
+                                {{ end }}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Estimation (hours)</label>
+                            <input type="number" step="0.5" min="0" name="estimation" value="{{ with .TicketOld }}{{ .Estimation }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 border-t border-slate-100 pt-4">
+                        <button type="button" data-modal-close class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600">Batal</button>
+                        <button type="submit" class="rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #22c55e;">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div id="sidebar-overlay" class="fixed inset-0 z-40 hidden bg-slate-900/50 lg:hidden"></div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var sidebar = document.getElementById('app-sidebar');
+                var overlay = document.getElementById('sidebar-overlay');
+                var toggleButtons = document.querySelectorAll('[data-sidebar-toggle]');
+                var projectFilter = document.getElementById('roadmap-project-filter');
+                var filterForm = document.getElementById('roadmap-filter-form');
+                var roadmapScroll = document.getElementById('roadmap-scroll');
+                var firstTimelineBar = document.querySelector('[data-roadmap-bar]');
+
+                function openModal(modalId) {
+                    var modal = document.getElementById(modalId);
+                    if (!modal) return;
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    document.body.classList.add('overflow-hidden');
+                }
+
+                function closeModal(modal) {
+                    if (!modal) return;
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    document.body.classList.remove('overflow-hidden');
+                }
+
+                function closeSidebar() {
+                    if (!sidebar) return;
+                    sidebar.classList.add('-translate-x-full');
+                    if (overlay) overlay.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                }
+
+                function openSidebar() {
+                    if (!sidebar) return;
+                    sidebar.classList.remove('-translate-x-full');
+                    if (overlay) overlay.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                }
+
+                function alignRoadmapScrollToData() {
+                    if (!roadmapScroll || !firstTimelineBar) return;
+                    var firstBarLeft = parseInt(firstTimelineBar.getAttribute('data-bar-left') || '0', 10);
+                    var columnWidth = {{ .ColumnWidth }};
+                    roadmapScroll.scrollLeft = Math.max(0, firstBarLeft - columnWidth);
+                }
+
+                toggleButtons.forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        if (sidebar.classList.contains('-translate-x-full')) openSidebar(); else closeSidebar();
+                    });
+                });
+
+                if (overlay) overlay.addEventListener('click', closeSidebar);
+                if (projectFilter) {
+                    projectFilter.addEventListener('change', function () {
+                        if (!filterForm) return;
+                        filterForm.submit();
+                    });
+                }
+                document.querySelectorAll('[data-modal-open]').forEach(function (trigger) {
+                    trigger.addEventListener('click', function () {
+                        var target = trigger.getAttribute('data-modal-open');
+                        if (target) openModal(target);
+                    });
+                });
+                document.querySelectorAll('[data-modal-close]').forEach(function (trigger) {
+                    trigger.addEventListener('click', function () {
+                        closeModal(trigger.closest('[data-modal]'));
+                    });
+                });
+                window.requestAnimationFrame(alignRoadmapScrollToData);
+                {{ if .OpenModal }}openModal('{{ .OpenModal }}');{{ end }}
+            });
+        </script>
+    </body>
+</html>

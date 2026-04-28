@@ -1,0 +1,133 @@
+{{ define "sidebar" }}
+<aside id="app-sidebar" class="fixed inset-y-0 left-0 z-50 flex w-[15.5rem] max-w-[85vw] -translate-x-full flex-col border-r border-slate-200 bg-white px-4 pb-6 pt-5 shadow-2xl transition-transform duration-200 ease-out lg:static lg:shrink-0 lg:translate-x-0 lg:shadow-none">
+    <div class="flex items-center justify-between px-2 pb-5">
+        <div class="flex items-center gap-3">
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-auth-500 text-xs font-semibold uppercase tracking-widest text-white" style="background-color: #f97316;">
+                PM
+            </div>
+            <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Go Rewrite</p>
+                <p class="text-sm font-semibold text-slate-800">Project Management</p>
+            </div>
+        </div>
+        <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 lg:hidden" data-sidebar-toggle aria-label="Close sidebar">
+            <i class="bx bx-x text-2xl"></i>
+        </button>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto pr-1">
+        <ul class="mt-2 space-y-1">
+            <li>
+                <a href="{{ baseURL "/dashboard" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-semibold transition sm:gap-4 sm:px-4 sm:py-4 sm:text-[15px] {{ if eq .Page "dashboard" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "dashboard" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                    <i class="bx bx-grid-alt text-xl"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            {{ if or (index .Permissions "List projects") (index .Permissions "List tickets") (index .Permissions "List sprints") }}
+            <li class="pt-2">
+                <div class="px-3 py-3 text-[14px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:px-4">
+                    Management
+                </div>
+                <ul class="mt-1 space-y-1 pl-2">
+                    {{ if index .Permissions "List projects" }}
+                    <li>
+                        <a href="{{ baseURL "/projects" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "project" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "project" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-briefcase-alt-2 text-lg"></i>
+                            <span>Projects</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ if index .Permissions "List tickets" }}
+                    <li>
+                        <a href="{{ baseURL "/tickets" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "ticket" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "ticket" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-purchase-tag-alt text-lg"></i>
+                            <span>Tickets</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ baseURL "/board" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "board" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "board" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-columns text-lg"></i>
+                            <span>Board</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ if index .Permissions "List sprints" }}
+                    <li>
+                        <a href="{{ baseURL "/road-map" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "roadmap" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "roadmap" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-calendar-event text-lg"></i>
+                            <span>Road Map</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                </ul>
+            </li>
+            {{ end }}
+            {{ if index .Permissions "List roles" }}
+            <li>
+                <a href="{{ baseURL "/role" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-semibold transition sm:gap-4 sm:px-4 sm:py-4 sm:text-[15px] {{ if or (eq .Page "role") (eq .Page "roleForm") (eq .Page "roleEdit") }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if or (eq .Page "role") (eq .Page "roleForm") (eq .Page "roleEdit") }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                    <i class="bx bx-shield-quarter text-xl"></i>
+                    <span>Roles</span>
+                </a>
+            </li>
+            {{ end }}
+            {{ if index .Permissions "List users" }}
+            <li>
+                <a href="{{ baseURL "/users" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-semibold transition sm:gap-4 sm:px-4 sm:py-4 sm:text-[15px] {{ if eq .Page "user" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "user" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                    <i class="bx bx-user text-xl"></i>
+                    <span>Users</span>
+                </a>
+            </li>
+            {{ end }}
+            {{ if or (index .Permissions "List activities") (index .Permissions "List project statuses") (index .Permissions "List ticket statuses") (index .Permissions "List ticket types") (index .Permissions "List ticket priorities") }}
+            <li class="pt-2">
+                <div class="px-3 py-3 text-[14px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:px-4">
+                    Referential
+                </div>
+                <ul class="mt-1 space-y-1 pl-2">
+                    {{ if index .Permissions "List activities" }}
+                    <li>
+                        <a href="{{ baseURL "/activities" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "activity" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "activity" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-clipboard text-lg"></i>
+                            <span>Activities</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ if index .Permissions "List project statuses" }}
+                    <li>
+                        <a href="{{ baseURL "/project-statuses" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "projectStatus" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "projectStatus" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-clipboard text-lg"></i>
+                            <span>Project statuses</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ if index .Permissions "List ticket statuses" }}
+                    <li>
+                        <a href="{{ baseURL "/ticket-statuses" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "ticketStatus" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "ticketStatus" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-clipboard text-lg"></i>
+                            <span>Ticket statuses</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ if index .Permissions "List ticket types" }}
+                    <li>
+                        <a href="{{ baseURL "/ticket-types" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "ticketType" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "ticketType" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-clipboard text-lg"></i>
+                            <span>Ticket types</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ if index .Permissions "List ticket priorities" }}
+                    <li>
+                        <a href="{{ baseURL "/ticket-priorities" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "ticketPriority" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "ticketPriority" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-shield-quarter text-lg"></i>
+                            <span>Ticket priorities</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                </ul>
+            </li>
+            {{ end }}
+        </ul>
+    </nav>
+</aside>
+{{ end }}
