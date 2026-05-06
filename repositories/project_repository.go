@@ -148,7 +148,7 @@ func (r *ProjectRepository) GetStatusOptions() ([]models.ProjectStatusOption, er
 		SELECT id, name, color
 		FROM project_statuses
 		WHERE deleted_at IS NULL
-		ORDER BY name
+		ORDER BY id ASC
 	`)
 	if err != nil {
 		return nil, err
