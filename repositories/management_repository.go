@@ -468,12 +468,13 @@ func (r *ManagementRepository) UpdateTicket(input models.TicketUpdateInput, esti
 	var (
 		projectID       int
 		currentStatusID int
+		ownerID         int
 	)
 	if err := tx.QueryRow(`
-		SELECT project_id, status_id
+		SELECT project_id, status_id, owner_id
 		FROM tickets
 		WHERE id = ? AND deleted_at IS NULL
-	`, input.ID).Scan(&projectID, &currentStatusID); err != nil {
+	`, input.ID).Scan(&projectID, &currentStatusID, &ownerID); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -545,11 +546,16 @@ func (r *ManagementRepository) UpdateTicket(input models.TicketUpdateInput, esti
 		return err
 	}
 
-	if actorUserID > 0 && currentStatusID != input.StatusID {
+	activityUserID := actorUserID
+	if activityUserID <= 0 {
+		activityUserID = ownerID
+	}
+
+	if currentStatusID != input.StatusID {
 		if _, err := tx.Exec(`
 			INSERT INTO ticket_activities (ticket_id, old_status_id, new_status_id, user_id, created_at, updated_at)
 			VALUES (?, ?, ?, ?, NOW(), NOW())
-		`, input.ID, currentStatusID, input.StatusID, actorUserID); err != nil {
+		`, input.ID, currentStatusID, input.StatusID, activityUserID); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -582,6 +588,7 @@ func (r *ManagementRepository) GetTicketComments(ticketID int) ([]models.TicketC
 	rows, err := r.DB.Query(`
 		SELECT
 			tc.id,
+			tc.user_id,
 			u.name,
 			tc.content,
 			tc.created_at
@@ -601,7 +608,7 @@ func (r *ManagementRepository) GetTicketComments(ticketID int) ([]models.TicketC
 			item         models.TicketCommentItem
 			createdAtRaw sql.NullTime
 		)
-		if err := rows.Scan(&item.ID, &item.UserName, &item.Content, &createdAtRaw); err != nil {
+		if err := rows.Scan(&item.ID, &item.UserID, &item.UserName, &item.Content, &createdAtRaw); err != nil {
 			return nil, err
 		}
 		item.UserInitials = initialsOrFallback(item.UserName)
@@ -637,6 +644,26 @@ func (r *ManagementRepository) CreateTicketComment(ticketID, userID int, content
 	}
 
 	return tx.Commit()
+}
+
+func (r *ManagementRepository) UpdateTicketComment(ticketID, commentID, userID int, content string) error {
+	result, err := r.DB.Exec(`
+		UPDATE ticket_comments
+		SET content = ?, updated_at = NOW()
+		WHERE id = ? AND ticket_id = ? AND user_id = ? AND deleted_at IS NULL
+	`, content, commentID, ticketID, userID)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected <= 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (r *ManagementRepository) GetTicketActivities(ticketID int) ([]models.TicketActivityItem, error) {

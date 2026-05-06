@@ -80,14 +80,15 @@ func TicketShow(c *gin.Context) {
 	}
 
 	Render(c, "ticket_detail.html", gin.H{
-		"Title":       "View Ticket",
-		"Page":        "ticket",
-		"Ticket":      pageData.Ticket,
-		"Comments":    pageData.Comments,
-		"Activities":  pageData.Activities,
-		"Hours":       pageData.Hours,
-		"Subscribers": pageData.Subscribers,
-		"Attachments": pageData.Attachments,
+		"Title":         "View Ticket",
+		"Page":          "ticket",
+		"Ticket":        pageData.Ticket,
+		"Comments":      pageData.Comments,
+		"Activities":    pageData.Activities,
+		"Hours":         pageData.Hours,
+		"Subscribers":   pageData.Subscribers,
+		"Attachments":   pageData.Attachments,
+		"CurrentUserID": currentSessionUserID(c),
 	})
 }
 
@@ -169,6 +170,27 @@ func TicketCommentStore(c *gin.Context) {
 	}
 
 	if err := managementService().CreateTicketComment(ticketID, currentSessionUserID(c), c.PostForm("content")); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+}
+
+func TicketCommentUpdate(c *gin.Context) {
+	ticketID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || ticketID <= 0 {
+		c.String(http.StatusBadRequest, "ticket tidak valid")
+		return
+	}
+
+	commentID, err := strconv.Atoi(c.Param("commentId"))
+	if err != nil || commentID <= 0 {
+		c.String(http.StatusBadRequest, "comment tidak valid")
+		return
+	}
+
+	if err := managementService().UpdateTicketComment(ticketID, commentID, currentSessionUserID(c), c.PostForm("content")); err != nil {
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}

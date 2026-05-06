@@ -109,6 +109,28 @@ func (s *ManagementService) CreateTicketComment(ticketID, userID int, content st
 	return nil
 }
 
+func (s *ManagementService) UpdateTicketComment(ticketID, commentID, userID int, content string) error {
+	content = strings.TrimSpace(content)
+	if ticketID <= 0 || commentID <= 0 {
+		return errors.New("comment tidak valid")
+	}
+	if userID <= 0 {
+		return errors.New("user tidak valid")
+	}
+	if content == "" {
+		return errors.New("comment wajib diisi")
+	}
+
+	if err := s.Repo.UpdateTicketComment(ticketID, commentID, userID, content); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("comment tidak ditemukan atau bukan milik anda")
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (s *ManagementService) UpdateTicket(input models.TicketUpdateInput, actorUserID int) (models.TicketUpdateInput, error) {
 	input.Name = strings.TrimSpace(input.Name)
 	input.Content = strings.TrimSpace(input.Content)

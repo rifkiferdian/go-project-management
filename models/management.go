@@ -95,6 +95,7 @@ type TicketDetail struct {
 // TicketCommentItem merepresentasikan komentar pada ticket.
 type TicketCommentItem struct {
 	ID                int
+	UserID            int
 	UserName          string
 	UserInitials      string
 	Content           string
