@@ -461,7 +461,11 @@ CREATE TABLE `project_statuses` (
 --
 
 INSERT INTO `project_statuses` (`id`, `name`, `color`, `is_default`, `deleted_at`, `created_at`, `updated_at`) VALUES
-(1, 'Closed', '#00c926', 0, NULL, '2026-04-12 22:07:26', '2026-04-12 22:08:46');
+(1, 'Request Received', '#3b82f6', 1, NULL, '2026-04-12 22:07:26', '2026-04-12 22:08:46'),
+(2, 'In Progress', '#f59e0b', 0, NULL, '2026-04-12 22:07:26', '2026-04-12 22:08:46'),
+(3, 'Testing', '#8b5cf6', 0, NULL, '2026-04-12 22:07:26', '2026-04-12 22:08:46'),
+(4, 'Implementation', '#f97316', 0, NULL, '2026-04-12 22:07:26', '2026-04-12 22:08:46'),
+(5, 'Done', '#22c55e', 0, NULL, '2026-04-12 22:07:26', '2026-04-12 22:08:46');
 
 -- --------------------------------------------------------
 
@@ -1204,7 +1208,7 @@ ALTER TABLE `project_favorites`
 -- AUTO_INCREMENT for table `project_statuses`
 --
 ALTER TABLE `project_statuses`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `project_users`

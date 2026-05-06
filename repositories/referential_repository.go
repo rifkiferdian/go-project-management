@@ -61,7 +61,31 @@ func (r *ReferentialRepository) DeleteActivity(id int) error {
 }
 
 func (r *ReferentialRepository) GetProjectStatuses() ([]models.StatusReference, error) {
-	return r.getStatusReferences("project_statuses")
+	rows, err := r.DB.Query(`
+		SELECT id, name, color, is_default, created_at
+		FROM project_statuses
+		WHERE deleted_at IS NULL
+		ORDER BY id
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.StatusReference
+	for rows.Next() {
+		var (
+			item      models.StatusReference
+			createdAt time.Time
+		)
+		if err := rows.Scan(&item.ID, &item.Name, &item.Color, &item.IsDefault, &createdAt); err != nil {
+			return nil, err
+		}
+		item.CreatedAtDisplay = createdAt.Format("02 Jan 2006 15:04:05")
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
 }
 
 func (r *ReferentialRepository) CreateProjectStatus(name, color string, isDefault bool) error {
