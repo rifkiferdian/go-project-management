@@ -36,6 +36,9 @@ func Connect() {
 	if err := ensureTicketScheduleColumns(DB, os.Getenv("DB_NAME")); err != nil {
 		panic(err)
 	}
+	if err := ensureTicketAttachmentsTable(DB); err != nil {
+		panic(err)
+	}
 
 	fmt.Println("Database connected successfully")
 }
@@ -70,4 +73,26 @@ func ensureTicketScheduleColumns(db *sql.DB, dbName string) error {
 	}
 
 	return nil
+}
+
+func ensureTicketAttachmentsTable(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS ticket_attachments (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			ticket_id BIGINT UNSIGNED NOT NULL,
+			user_id BIGINT UNSIGNED NULL,
+			original_name VARCHAR(255) NOT NULL,
+			file_name VARCHAR(255) NOT NULL,
+			file_path VARCHAR(500) NOT NULL,
+			file_size BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			mime_type VARCHAR(255) NULL,
+			created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			deleted_at TIMESTAMP NULL DEFAULT NULL,
+			PRIMARY KEY (id),
+			KEY ticket_attachments_ticket_id_index (ticket_id),
+			KEY ticket_attachments_user_id_index (user_id)
+		)
+	`)
+	return err
 }

@@ -118,12 +118,18 @@ func (r *ManagementRepository) GetTicketDetailPage(id int) (models.TicketDetailP
 		return models.TicketDetailPage{}, err
 	}
 
+	attachments, err := r.GetTicketAttachments(id)
+	if err != nil {
+		return models.TicketDetailPage{}, err
+	}
+
 	return models.TicketDetailPage{
 		Ticket:      detail,
 		Comments:    comments,
 		Activities:  activities,
 		Hours:       hours,
 		Subscribers: subscribers,
+		Attachments: attachments,
 	}, nil
 }
 
@@ -552,6 +558,26 @@ func (r *ManagementRepository) UpdateTicket(input models.TicketUpdateInput, esti
 	return tx.Commit()
 }
 
+func (r *ManagementRepository) UpdateTicketContent(ticketID int, content string) error {
+	result, err := r.DB.Exec(`
+		UPDATE tickets
+		SET content = ?, updated_at = NOW()
+		WHERE id = ? AND deleted_at IS NULL
+	`, htmlFromPlainText(content), ticketID)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected <= 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func (r *ManagementRepository) GetTicketComments(ticketID int) ([]models.TicketCommentItem, error) {
 	rows, err := r.DB.Query(`
 		SELECT
@@ -585,6 +611,32 @@ func (r *ManagementRepository) GetTicketComments(ticketID int) ([]models.TicketC
 	}
 
 	return items, rows.Err()
+}
+
+func (r *ManagementRepository) CreateTicketComment(ticketID, userID int, content string) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	if err := ensureExists(tx, `SELECT COUNT(1) FROM tickets WHERE id = ? AND deleted_at IS NULL`, ticketID); err != nil {
+		tx.Rollback()
+		return sql.ErrNoRows
+	}
+	if err := ensureExists(tx, `SELECT COUNT(1) FROM users WHERE id = ? AND deleted_at IS NULL`, userID); err != nil {
+		tx.Rollback()
+		return errors.New("user tidak valid")
+	}
+
+	if _, err := tx.Exec(`
+		INSERT INTO ticket_comments (ticket_id, user_id, content, created_at, updated_at)
+		VALUES (?, ?, ?, NOW(), NOW())
+	`, ticketID, userID, content); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *ManagementRepository) GetTicketActivities(ticketID int) ([]models.TicketActivityItem, error) {
@@ -690,6 +742,72 @@ func (r *ManagementRepository) GetTicketSubscribers(ticketID int) ([]models.Tick
 	}
 
 	return items, rows.Err()
+}
+
+func (r *ManagementRepository) GetTicketAttachments(ticketID int) ([]models.TicketAttachmentItem, error) {
+	rows, err := r.DB.Query(`
+		SELECT
+			ta.id,
+			ta.original_name,
+			ta.file_name,
+			ta.file_path,
+			ta.file_size,
+			COALESCE(ta.mime_type, '') AS mime_type,
+			COALESCE(u.name, '-') AS uploader_name,
+			ta.created_at
+		FROM ticket_attachments ta
+		LEFT JOIN users u ON u.id = ta.user_id
+		WHERE ta.ticket_id = ? AND ta.deleted_at IS NULL
+		ORDER BY ta.created_at DESC, ta.id DESC
+	`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketAttachmentItem
+	for rows.Next() {
+		var (
+			item         models.TicketAttachmentItem
+			createdAtRaw sql.NullTime
+		)
+		if err := rows.Scan(
+			&item.ID,
+			&item.OriginalName,
+			&item.FileName,
+			&item.FilePath,
+			&item.FileSize,
+			&item.MimeType,
+			&item.UploaderName,
+			&createdAtRaw,
+		); err != nil {
+			return nil, err
+		}
+		item.FileSizeText = formatBytes(item.FileSize)
+		item.CreatedAtDisplay = formatTimestamp(createdAtRaw)
+		item.CreatedAtRelative = relativeTime(createdAtRaw)
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) CreateTicketAttachment(input models.TicketAttachmentCreateInput) error {
+	var count int
+	if err := r.DB.QueryRow(`SELECT COUNT(1) FROM tickets WHERE id = ? AND deleted_at IS NULL`, input.TicketID).Scan(&count); err != nil {
+		return err
+	}
+	if count <= 0 {
+		return sql.ErrNoRows
+	}
+
+	_, err := r.DB.Exec(`
+		INSERT INTO ticket_attachments (
+			ticket_id, user_id, original_name, file_name, file_path, file_size, mime_type, created_at, updated_at
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+	`, input.TicketID, nullableInt(input.UserID), input.OriginalName, input.FileName, input.FilePath, input.FileSize, input.MimeType)
+	return err
 }
 
 func (r *ManagementRepository) GetBoardColumns(projectID int) ([]models.BoardColumn, error) {
@@ -1222,7 +1340,7 @@ func formatTimestamp(value sql.NullTime) string {
 	if !value.Valid {
 		return "-"
 	}
-	return value.Time.Format("2006-01-02 3:04 PM")
+	return value.Time.Format("02 Jan 06")
 }
 
 func relativeTime(value sql.NullTime) string {
@@ -1313,6 +1431,24 @@ func formatHoursLabel(value float64) string {
 		return "1 hour"
 	}
 	return trimFloat(value) + " hours"
+}
+
+func formatBytes(value int64) string {
+	if value <= 0 {
+		return "0 B"
+	}
+
+	units := []string{"B", "KB", "MB", "GB"}
+	size := float64(value)
+	unitIndex := 0
+	for size >= 1024 && unitIndex < len(units)-1 {
+		size = size / 1024
+		unitIndex++
+	}
+	if unitIndex == 0 {
+		return strconv.FormatInt(value, 10) + " " + units[unitIndex]
+	}
+	return trimFloat(size) + " " + units[unitIndex]
 }
 
 func initialsOrFallback(name string) string {

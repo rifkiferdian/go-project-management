@@ -707,6 +707,26 @@ CREATE TABLE `ticket_activities` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `ticket_attachments`
+--
+
+CREATE TABLE `ticket_attachments` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `ticket_id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `original_name` varchar(255) NOT NULL,
+  `file_name` varchar(255) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `file_size` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+  `mime_type` varchar(255) DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `ticket_comments`
 --
 
@@ -1077,6 +1097,14 @@ ALTER TABLE `ticket_activities`
   ADD KEY `ticket_activities_user_id_foreign` (`user_id`);
 
 --
+-- Indexes for table `ticket_attachments`
+--
+ALTER TABLE `ticket_attachments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `ticket_attachments_ticket_id_foreign` (`ticket_id`),
+  ADD KEY `ticket_attachments_user_id_foreign` (`user_id`);
+
+--
 -- Indexes for table `ticket_comments`
 --
 ALTER TABLE `ticket_comments`
@@ -1253,6 +1281,12 @@ ALTER TABLE `ticket_activities`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `ticket_attachments`
+--
+ALTER TABLE `ticket_attachments`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `ticket_comments`
 --
 ALTER TABLE `ticket_comments`
@@ -1379,6 +1413,13 @@ ALTER TABLE `ticket_activities`
   ADD CONSTRAINT `ticket_activities_old_status_id_foreign` FOREIGN KEY (`old_status_id`) REFERENCES `ticket_statuses` (`id`),
   ADD CONSTRAINT `ticket_activities_ticket_id_foreign` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`),
   ADD CONSTRAINT `ticket_activities_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `ticket_attachments`
+--
+ALTER TABLE `ticket_attachments`
+  ADD CONSTRAINT `ticket_attachments_ticket_id_foreign` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`),
+  ADD CONSTRAINT `ticket_attachments_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 
 --
 -- Constraints for table `ticket_comments`

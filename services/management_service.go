@@ -51,6 +51,64 @@ func (s *ManagementService) GetTicketEditPage(id int) (models.TicketEditPage, er
 	return page, nil
 }
 
+func (s *ManagementService) CreateTicketAttachment(input models.TicketAttachmentCreateInput) error {
+	if input.TicketID <= 0 {
+		return errors.New("ticket tidak valid")
+	}
+	if strings.TrimSpace(input.OriginalName) == "" || strings.TrimSpace(input.FileName) == "" || strings.TrimSpace(input.FilePath) == "" {
+		return errors.New("file attachment tidak valid")
+	}
+	if input.FileSize <= 0 {
+		return errors.New("file attachment kosong")
+	}
+
+	if err := s.Repo.CreateTicketAttachment(input); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("ticket tidak ditemukan")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (s *ManagementService) UpdateTicketContent(ticketID int, content string) error {
+	if ticketID <= 0 {
+		return errors.New("ticket tidak valid")
+	}
+
+	if err := s.Repo.UpdateTicketContent(ticketID, strings.TrimSpace(content)); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("ticket tidak ditemukan")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (s *ManagementService) CreateTicketComment(ticketID, userID int, content string) error {
+	content = strings.TrimSpace(content)
+	if ticketID <= 0 {
+		return errors.New("ticket tidak valid")
+	}
+	if userID <= 0 {
+		return errors.New("user tidak valid")
+	}
+	if content == "" {
+		return errors.New("comment wajib diisi")
+	}
+
+	if err := s.Repo.CreateTicketComment(ticketID, userID, content); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("ticket tidak ditemukan")
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (s *ManagementService) UpdateTicket(input models.TicketUpdateInput, actorUserID int) (models.TicketUpdateInput, error) {
 	input.Name = strings.TrimSpace(input.Name)
 	input.Content = strings.TrimSpace(input.Content)

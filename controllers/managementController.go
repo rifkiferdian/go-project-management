@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -84,7 +87,93 @@ func TicketShow(c *gin.Context) {
 		"Activities":  pageData.Activities,
 		"Hours":       pageData.Hours,
 		"Subscribers": pageData.Subscribers,
+		"Attachments": pageData.Attachments,
 	})
+}
+
+func TicketAttachmentStore(c *gin.Context) {
+	ticketID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || ticketID <= 0 {
+		c.String(http.StatusBadRequest, "ticket tidak valid")
+		return
+	}
+
+	file, err := c.FormFile("attachment")
+	if err != nil {
+		c.String(http.StatusBadRequest, "file attachment wajib dipilih")
+		return
+	}
+	if file.Size <= 0 {
+		c.String(http.StatusBadRequest, "file attachment kosong")
+		return
+	}
+	if file.Size > 10*1024*1024 {
+		c.String(http.StatusBadRequest, "file attachment maksimal 10 MB")
+		return
+	}
+
+	uploadDir := filepath.Join("assets", "uploads", "tickets", strconv.Itoa(ticketID))
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	safeName := safeUploadFilename(file.Filename)
+	storedName := fmt.Sprintf("%d-%s", time.Now().UnixNano(), safeName)
+	destination := filepath.Join(uploadDir, storedName)
+	if err := c.SaveUploadedFile(file, destination); err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	publicPath := "/assets/uploads/tickets/" + strconv.Itoa(ticketID) + "/" + storedName
+	input := models.TicketAttachmentCreateInput{
+		TicketID:     ticketID,
+		UserID:       currentSessionUserID(c),
+		OriginalName: filepath.Base(file.Filename),
+		FileName:     storedName,
+		FilePath:     publicPath,
+		FileSize:     file.Size,
+		MimeType:     file.Header.Get("Content-Type"),
+	}
+
+	if err := managementService().CreateTicketAttachment(input); err != nil {
+		_ = os.Remove(destination)
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+}
+
+func TicketContentUpdate(c *gin.Context) {
+	ticketID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || ticketID <= 0 {
+		c.String(http.StatusBadRequest, "ticket tidak valid")
+		return
+	}
+
+	if err := managementService().UpdateTicketContent(ticketID, c.PostForm("content")); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+}
+
+func TicketCommentStore(c *gin.Context) {
+	ticketID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || ticketID <= 0 {
+		c.String(http.StatusBadRequest, "ticket tidak valid")
+		return
+	}
+
+	if err := managementService().CreateTicketComment(ticketID, currentSessionUserID(c), c.PostForm("content")); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
 }
 
 func TicketEdit(c *gin.Context) {
@@ -432,4 +521,35 @@ func currentSessionUserID(c *gin.Context) int {
 	}
 
 	return 0
+}
+
+func safeUploadFilename(name string) string {
+	base := strings.TrimSpace(filepath.Base(name))
+	if base == "" || base == "." {
+		return "attachment"
+	}
+
+	extension := filepath.Ext(base)
+	stem := strings.TrimSuffix(base, extension)
+	var builder strings.Builder
+	for _, r := range stem {
+		switch {
+		case r >= 'a' && r <= 'z':
+			builder.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			builder.WriteRune(r)
+		case r >= '0' && r <= '9':
+			builder.WriteRune(r)
+		case r == '-' || r == '_':
+			builder.WriteRune(r)
+		default:
+			builder.WriteRune('-')
+		}
+	}
+
+	safeStem := strings.Trim(builder.String(), "-_")
+	if safeStem == "" {
+		safeStem = "attachment"
+	}
+	return safeStem + strings.ToLower(extension)
 }

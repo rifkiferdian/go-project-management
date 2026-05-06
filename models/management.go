@@ -28,6 +28,7 @@ type TicketDetailPage struct {
 	Activities  []TicketActivityItem
 	Hours       []TicketHourItem
 	Subscribers []TicketSubscriberItem
+	Attachments []TicketAttachmentItem
 }
 
 // TicketEditPage mewakili data halaman edit ticket.
@@ -130,6 +131,31 @@ type TicketSubscriberItem struct {
 	ID       int
 	Name     string
 	Initials string
+}
+
+// TicketAttachmentItem merepresentasikan file attachment pada ticket.
+type TicketAttachmentItem struct {
+	ID                int
+	OriginalName      string
+	FileName          string
+	FilePath          string
+	FileSize          int64
+	FileSizeText      string
+	MimeType          string
+	UploaderName      string
+	CreatedAtDisplay  string
+	CreatedAtRelative string
+}
+
+// TicketAttachmentCreateInput menampung metadata file upload ticket.
+type TicketAttachmentCreateInput struct {
+	TicketID     int
+	UserID       int
+	OriginalName string
+	FileName     string
+	FilePath     string
+	FileSize     int64
+	MimeType     string
 }
 
 // TicketFormOption dipakai untuk opsi select ticket.
