@@ -106,10 +106,16 @@ type TicketCommentItem struct {
 // TicketActivityItem merepresentasikan riwayat perpindahan status ticket.
 type TicketActivityItem struct {
 	ID                int
+	TicketID          int
+	TicketCode        string
+	TicketName        string
+	ProjectName       string
 	UserName          string
 	UserInitials      string
 	OldStatusName     string
+	OldStatusColor    string
 	NewStatusName     string
+	NewStatusColor    string
 	CreatedAtDisplay  string
 	CreatedAtRelative string
 }
