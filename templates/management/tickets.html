@@ -22,97 +22,183 @@
                                 <h1 class="mt-2 text-2xl font-semibold text-slate-900">Tickets</h1>
                                 <p class="mt-2 text-sm text-slate-500">Daftar ticket aktif lintas project dengan status, priority, dan type yang sudah terhubung ke schema baru.</p>
                             </div>
-                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            <div class="grid grid-cols-1 gap-3">
                                 <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                                     <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Total</div>
                                     <div class="mt-2 text-2xl font-semibold text-slate-900">{{ len .Tickets }}</div>
-                                </div>
-                                <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                                    <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Updated</div>
-                                    <div class="mt-2 text-sm font-semibold text-slate-900">Live DB</div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div class="border-b border-slate-100 px-4 py-4">
-                                <h2 class="text-base font-semibold text-slate-900">Ticket List</h2>
+                            <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Daftar Ticket</h2>
+                                    <p class="mt-1 text-sm text-slate-500">Pilih tampilan tabel atau kanban board untuk melihat ticket berdasarkan status.</p>
+                                </div>
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                    <form method="get" action="/tickets" class="flex flex-col gap-2 sm:flex-row sm:items-center" data-project-filter-form>
+                                        <label for="project_id" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Project</label>
+                                        <select id="project_id" name="project_id" class="h-10 min-w-[220px] rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#f26419] focus:ring-2 focus:ring-[#f26419]/10" data-project-filter>
+                                            <option value="0">All Projects</option>
+                                            {{ range .ProjectOptions }}
+                                            <option value="{{ .ID }}" {{ if eq .ID $.SelectedProjectID }}selected{{ end }}>{{ .Name }}</option>
+                                            {{ end }}
+                                        </select>
+                                        <button type="submit" class="hidden">Filter</button>
+                                    </form>
+                                    <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                                        <button type="button" class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition" data-view-toggle="kanban">
+                                            <i class="bx bx-grid-alt text-base"></i>
+                                            Kanban
+                                        </button>
+                                        <button type="button" class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition" data-view-toggle="list">
+                                            <i class="bx bx-list-ul text-base"></i>
+                                            List
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="p-4">
-                                <div class="overflow-x-auto">
-                                    <table class="w-full min-w-[1320px] text-sm">
-                                        <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-                                            <tr>
-                                                <th class="px-3 py-2 text-left font-semibold">Code</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Ticket</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Project</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Status</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Priority</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Type</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Owner</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Responsible</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Estimation</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Start Date</th>
-                                                <th class="px-3 py-2 text-left font-semibold">End Date</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Updated</th>
-                                                <th class="px-3 py-2 text-left font-semibold">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-slate-100">
-                                            {{ range .Tickets }}
-                                            <tr class="hover:bg-slate-50/70">
-                                                <td class="px-3 py-3 font-semibold text-slate-700"><a href="/tickets/{{ .ID }}" class="transition hover:text-[#f26419]">{{ .Code }}</a></td>
-                                                <td class="px-3 py-3">
-                                                    <div class="font-semibold text-slate-800"><a href="/tickets/{{ .ID }}" class="transition hover:text-[#f26419]">{{ .Name }}</a></div>
-                                                </td>
-                                                <td class="px-3 py-3 text-slate-600">{{ .ProjectName }}</td>
-                                                <td class="px-3 py-3">
-                                                    <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
-                                                        <span style="display:inline-block;width:10px;height:10px;border-radius:9999px;background-color:{{ .StatusColor }};"></span>
-                                                        {{ .StatusName }}
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
-                                                        <span style="display:inline-block;width:10px;height:10px;border-radius:9999px;background-color:{{ .PriorityColor }};"></span>
-                                                        {{ .PriorityName }}
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
-                                                        <span style="display:inline-block;width:10px;height:10px;border-radius:9999px;background-color:{{ .TypeColor }};"></span>
-                                                        {{ .TypeName }}
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3 text-slate-600">{{ .OwnerName }}</td>
-                                                <td class="px-3 py-3 text-slate-600">{{ .ResponsibleName }}</td>
-                                                <td class="px-3 py-3 text-slate-600">{{ .EstimationText }}</td>
-                                                <td class="px-3 py-3 text-slate-600">{{ .StartsAtDisplay }}</td>
-                                                <td class="px-3 py-3 text-slate-600">{{ .EndsAtDisplay }}</td>
-                                                <td class="px-3 py-3 text-slate-500">{{ .UpdatedAtDisplay }}</td>
-                                                <td class="px-3 py-3">
-                                                    <div class="flex flex-wrap gap-2">
-                                                        <a href="/tickets/{{ .ID }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
-                                                            <i class="bx bx-show text-sm"></i>
-                                                            View
-                                                        </a>
-                                                        {{ if index $.Permissions "Update ticket" }}
-                                                        <a href="/tickets/{{ .ID }}/edit" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100">
-                                                            <i class="bx bx-pen text-sm"></i>
-                                                            Edit
-                                                        </a>
-                                                        {{ end }}
+                                <section data-view-panel="list">
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full min-w-[1120px] text-sm">
+                                            <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+                                                <tr>
+                                                    <th class="px-3 py-2 text-left font-semibold">Code</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Ticket</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Project</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Status</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Priority</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Type</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Owner</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Responsible</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Start Date</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">End Date</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100">
+                                                {{ range .Tickets }}
+                                                <tr class="hover:bg-slate-50/70">
+                                                    <td class="px-3 py-3 font-semibold text-slate-700"><a href="/tickets/{{ .ID }}" class="transition hover:text-[#f26419]">{{ .Code }}</a></td>
+                                                    <td class="px-3 py-3">
+                                                        <div class="font-semibold text-slate-800"><a href="/tickets/{{ .ID }}" class="transition hover:text-[#f26419]">{{ .Name }}</a></div>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600">{{ .ProjectName }}</td>
+                                                    <td class="px-3 py-3">
+                                                        <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+                                                            <span style="display:inline-block;width:10px;height:10px;border-radius:9999px;background-color:{{ .StatusColor }};"></span>
+                                                            {{ .StatusName }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-3 py-3">
+                                                        <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+                                                            <span style="display:inline-block;width:10px;height:10px;border-radius:9999px;background-color:{{ .PriorityColor }};"></span>
+                                                            {{ .PriorityName }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-3 py-3">
+                                                        <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+                                                            <span style="display:inline-block;width:10px;height:10px;border-radius:9999px;background-color:{{ .TypeColor }};"></span>
+                                                            {{ .TypeName }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600">{{ .OwnerName }}</td>
+                                                    <td class="px-3 py-3 text-slate-600">{{ .ResponsibleName }}</td>
+                                                    <td class="px-3 py-3 text-slate-600">{{ .StartsAtDisplay }}</td>
+                                                    <td class="px-3 py-3 text-slate-600">{{ .EndsAtDisplay }}</td>
+                                                    <td class="px-3 py-3">
+                                                        <div class="flex flex-wrap gap-2">
+                                                            <a href="/tickets/{{ .ID }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                                                                <i class="bx bx-show text-sm"></i>
+                                                                View
+                                                            </a>
+                                                            {{ if index $.Permissions "Update ticket" }}
+                                                            <a href="/tickets/{{ .ID }}/edit" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100">
+                                                                <i class="bx bx-pen text-sm"></i>
+                                                                Edit
+                                                            </a>
+                                                            {{ end }}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {{ else }}
+                                                <tr>
+                                                    <td colspan="11" class="px-3 py-10 text-center text-sm text-slate-500">Belum ada ticket.</td>
+                                                </tr>
+                                                {{ end }}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+
+                                <section class="hidden" data-view-panel="kanban">
+                                    {{ if .Columns }}
+                                    <div class="overflow-x-auto pb-2">
+                                        <div class="flex min-w-max gap-4">
+                                            {{ range .Columns }}
+                                            <section class="w-[300px] shrink-0 rounded-3xl border border-slate-200 bg-slate-50 shadow-sm">
+                                                <div class="rounded-t-3xl border-b border-slate-100 bg-white px-4 py-4">
+                                                    <div class="flex items-center justify-between gap-3">
+                                                        <div class="flex items-center gap-3">
+                                                            <span style="display:inline-block;width:14px;height:14px;border-radius:9999px;background-color:{{ .Color }};"></span>
+                                                            <div>
+                                                                <h3 class="text-sm font-semibold text-slate-900">{{ .Name }}</h3>
+                                                                <p class="text-xs text-slate-400">{{ .ScopeLabel }}</p>
+                                                            </div>
+                                                        </div>
+                                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{{ .TicketCount }}</span>
                                                     </div>
-                                                </td>
-                                            </tr>
-                                            {{ else }}
-                                            <tr>
-                                                <td colspan="13" class="px-3 py-10 text-center text-sm text-slate-500">Belum ada ticket.</td>
-                                            </tr>
+                                                </div>
+                                                <div class="space-y-3 p-4">
+                                                    {{ range .Tickets }}
+                                                    <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:bg-orange-50/40">
+                                                        <div class="space-y-3">
+                                                            <div class="min-w-0">
+                                                                <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"><a href="/tickets/{{ .ID }}" class="transition hover:text-[#f26419]">{{ .Code }}</a></div>
+                                                                <div class="mt-2 inline-flex max-w-full rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{{ .ProjectName }}</div>
+                                                                <h4 class="mt-2 text-sm font-semibold leading-6 text-slate-900"><a href="/tickets/{{ .ID }}" class="transition hover:text-[#f26419]">{{ .Name }}</a></h4>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mt-4 flex flex-wrap gap-2">
+                                                            <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                                                                <span style="display:inline-block;width:8px;height:8px;border-radius:9999px;background-color:{{ .PriorityColor }};"></span>
+                                                                {{ .PriorityName }}
+                                                            </span>
+                                                            <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                                                                <span style="display:inline-block;width:8px;height:8px;border-radius:9999px;background-color:{{ .TypeColor }};"></span>
+                                                                {{ .TypeName }}
+                                                            </span>
+                                                        </div>
+                                                        <div class="mt-4 flex items-center gap-3 text-xs text-slate-500">
+                                                            <span class="truncate">{{ .ResponsibleName }}</span>
+                                                        </div>
+                                                        <div class="mt-3 flex flex-wrap gap-2">
+                                                            <a href="/tickets/{{ .ID }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                                                                <i class="bx bx-show text-sm"></i>
+                                                                View
+                                                            </a>
+                                                            {{ if index $.Permissions "Update ticket" }}
+                                                            <a href="/tickets/{{ .ID }}/edit" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100">
+                                                                <i class="bx bx-pen text-sm"></i>
+                                                                Edit
+                                                            </a>
+                                                            {{ end }}
+                                                        </div>
+                                                    </article>
+                                                    {{ else }}
+                                                    <div class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-400">Belum ada ticket di status ini</div>
+                                                    {{ end }}
+                                                </div>
+                                            </section>
                                             {{ end }}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        </div>
+                                    </div>
+                                    {{ else }}
+                                    <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">Belum ada status ticket yang bisa ditampilkan.</div>
+                                    {{ end }}
+                                </section>
                             </div>
                         </div>
                     </div>
@@ -148,6 +234,42 @@
                 });
 
                 if (overlay) overlay.addEventListener('click', closeSidebar);
+
+                var projectFilter = document.querySelector('[data-project-filter]');
+                var projectFilterForm = document.querySelector('[data-project-filter-form]');
+                if (projectFilter && projectFilterForm) {
+                    projectFilter.addEventListener('change', function () {
+                        projectFilterForm.submit();
+                    });
+                }
+
+                var viewButtons = document.querySelectorAll('[data-view-toggle]');
+                var viewPanels = document.querySelectorAll('[data-view-panel]');
+                function applyViewMode(mode) {
+                    var nextMode = mode === 'list' ? 'list' : 'kanban';
+
+                    viewPanels.forEach(function (panel) {
+                        var panelMode = panel.getAttribute('data-view-panel');
+                        panel.classList.toggle('hidden', panelMode !== nextMode);
+                    });
+
+                    viewButtons.forEach(function (button) {
+                        var active = button.getAttribute('data-view-toggle') === nextMode;
+                        button.classList.toggle('bg-[#f26419]', active);
+                        button.classList.toggle('text-white', active);
+                        button.classList.toggle('shadow-sm', active);
+                        button.classList.toggle('text-slate-600', !active);
+                        button.style.boxShadow = active ? '0 10px 20px -14px rgba(242, 100, 25, 0.9)' : '';
+                    });
+                }
+
+                viewButtons.forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        applyViewMode(button.getAttribute('data-view-toggle'));
+                    });
+                });
+
+                applyViewMode('kanban');
             });
         </script>
     </body>

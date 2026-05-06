@@ -19,7 +19,7 @@ type ManagementRepository struct {
 
 var htmlTagPattern = regexp.MustCompile(`<[^>]+>`)
 
-func (r *ManagementRepository) GetTickets() ([]models.TicketListItem, error) {
+func (r *ManagementRepository) GetTickets(projectID int) ([]models.TicketListItem, error) {
 	rows, err := r.DB.Query(`
 		SELECT
 			t.id,
@@ -46,8 +46,9 @@ func (r *ManagementRepository) GetTickets() ([]models.TicketListItem, error) {
 		JOIN users owner ON owner.id = t.owner_id
 		LEFT JOIN users responsible ON responsible.id = t.responsible_id
 		WHERE t.deleted_at IS NULL
+			AND (? <= 0 OR t.project_id = ?)
 		ORDER BY t.updated_at DESC, t.id DESC
-	`)
+	`, projectID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -691,19 +692,20 @@ func (r *ManagementRepository) GetTicketSubscribers(ticketID int) ([]models.Tick
 	return items, rows.Err()
 }
 
-func (r *ManagementRepository) GetBoardColumns() ([]models.BoardColumn, error) {
+func (r *ManagementRepository) GetBoardColumns(projectID int) ([]models.BoardColumn, error) {
 	rows, err := r.DB.Query(`
 		SELECT
 			ts.id,
 			ts.name,
 			COALESCE(ts.color, '#cecece') AS color,
 			COALESCE(p.name, 'Global') AS scope_label,
-			ts.` + "`order`" + `
+			ts.`+"`order`"+`
 		FROM ticket_statuses ts
 		LEFT JOIN projects p ON p.id = ts.project_id
 		WHERE ts.deleted_at IS NULL
-		ORDER BY ts.project_id IS NOT NULL, ts.` + "`order`" + `, ts.name
-	`)
+			AND (? <= 0 OR ts.project_id IS NULL OR ts.project_id = ?)
+		ORDER BY ts.project_id IS NOT NULL, ts.`+"`order`"+`, ts.name
+	`, projectID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -721,7 +723,7 @@ func (r *ManagementRepository) GetBoardColumns() ([]models.BoardColumn, error) {
 		return nil, err
 	}
 
-	tickets, err := r.getBoardTickets()
+	tickets, err := r.getBoardTickets(projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -1030,7 +1032,7 @@ func (r *ManagementRepository) GetRoadmapTickets() ([]models.RoadmapTicket, erro
 	return items, rows.Err()
 }
 
-func (r *ManagementRepository) getBoardTickets() ([]models.BoardTicket, error) {
+func (r *ManagementRepository) getBoardTickets(projectID int) ([]models.BoardTicket, error) {
 	rows, err := r.DB.Query(`
 		SELECT
 			t.id,
@@ -1050,8 +1052,9 @@ func (r *ManagementRepository) getBoardTickets() ([]models.BoardTicket, error) {
 		JOIN ticket_types tt ON tt.id = t.type_id
 		LEFT JOIN users responsible ON responsible.id = t.responsible_id
 		WHERE t.deleted_at IS NULL
-		ORDER BY t.project_id ASC, t.` + "`order`" + ` ASC, t.updated_at DESC
-	`)
+			AND (? <= 0 OR t.project_id = ?)
+		ORDER BY t.project_id ASC, t.`+"`order`"+` ASC, t.updated_at DESC
+	`, projectID, projectID)
 	if err != nil {
 		return nil, err
 	}

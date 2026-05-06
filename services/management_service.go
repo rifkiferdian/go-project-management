@@ -15,8 +15,8 @@ type ManagementService struct {
 	Repo *repositories.ManagementRepository
 }
 
-func (s *ManagementService) GetTickets() ([]models.TicketListItem, error) {
-	return s.Repo.GetTickets()
+func (s *ManagementService) GetTickets(projectID int) ([]models.TicketListItem, error) {
+	return s.Repo.GetTickets(projectID)
 }
 
 func (s *ManagementService) GetTicketDetailPage(id int) (models.TicketDetailPage, error) {
@@ -119,8 +119,8 @@ func (s *ManagementService) UpdateTicket(input models.TicketUpdateInput, actorUs
 	return input, nil
 }
 
-func (s *ManagementService) GetBoardColumns() ([]models.BoardColumn, error) {
-	return s.Repo.GetBoardColumns()
+func (s *ManagementService) GetBoardColumns(projectID int) ([]models.BoardColumn, error) {
+	return s.Repo.GetBoardColumns(projectID)
 }
 
 func (s *ManagementService) GetRoadmapEpics() ([]models.RoadmapEpic, error) {

@@ -17,8 +17,24 @@ import (
 
 func TicketIndex(c *gin.Context) {
 	svc := managementService()
+	selectedProjectID, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("project_id", "0")))
+	if selectedProjectID < 0 {
+		selectedProjectID = 0
+	}
 
-	tickets, err := svc.GetTickets()
+	tickets, err := svc.GetTickets(selectedProjectID)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	columns, err := svc.GetBoardColumns(selectedProjectID)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	projectOptions, err := svc.GetRoadmapProjectOptions()
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -28,6 +44,11 @@ func TicketIndex(c *gin.Context) {
 		"Title":   "Tickets",
 		"Page":    "ticket",
 		"Tickets": tickets,
+		"Columns": columns,
+
+		"ProjectOptions":    projectOptions,
+		"SelectedProjectID": selectedProjectID,
+		"ProjectLabel":      resolveRoadmapProjectLabel(projectOptions, selectedProjectID),
 	})
 }
 
@@ -116,7 +137,7 @@ func TicketUpdate(c *gin.Context) {
 func BoardIndex(c *gin.Context) {
 	svc := managementService()
 
-	columns, err := svc.GetBoardColumns()
+	columns, err := svc.GetBoardColumns(0)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
