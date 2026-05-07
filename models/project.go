@@ -52,3 +52,28 @@ type ProjectStatusOption struct {
 	Name  string
 	Color string
 }
+
+// ProjectStatusChartItem merepresentasikan komposisi project per status.
+type ProjectStatusChartItem struct {
+	Name    string
+	Color   string
+	Count   int
+	Percent int
+}
+
+// ProjectDivisionChartItem merepresentasikan jumlah project per divisi peminta.
+type ProjectDivisionChartItem struct {
+	Name         string
+	Count        int
+	WidthPercent int
+}
+
+// DashboardProjectListItem merepresentasikan item list sederhana di dashboard.
+type DashboardProjectListItem struct {
+	ID                      int
+	Name                    string
+	RequestDivision         string
+	StatusName              string
+	StatusColor             string
+	HighPriorityTicketCount int
+}

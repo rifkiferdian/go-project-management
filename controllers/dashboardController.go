@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"gobase-app/config"
 	helpers "gobase-app/helper"
@@ -57,6 +58,30 @@ func DashboardIndex(c *gin.Context) {
 		return
 	}
 
+	statusChartItems, statusChartTotal, statusChartGradient, err := getProjectStatusComposition()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	divisionChartItems, err := getProjectDivisionComposition()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	urgentProjects, err := getUrgentProjects(5)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	requestQueueProjects, err := getRequestQueueProjects(5)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	recentTicketActivities, err := getRecentTicketActivities()
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
@@ -70,10 +95,264 @@ func DashboardIndex(c *gin.Context) {
 		"TotalTickets":                totalTickets,
 		"TotalInProgressProjects":     totalInProgressProjects,
 		"TotalImplementationProjects": totalImplementationProjects,
+		"StatusChartItems":            statusChartItems,
+		"StatusChartTotal":            statusChartTotal,
+		"StatusChartGradient":         statusChartGradient,
+		"DivisionChartItems":          divisionChartItems,
+		"UrgentProjects":              urgentProjects,
+		"RequestQueueProjects":        requestQueueProjects,
 		"ImplementationProjects":      implementationProjects,
 		"RecentTicketActivities":      recentTicketActivities,
 	})
 
+}
+
+func getProjectStatusComposition() ([]models.ProjectStatusChartItem, int, string, error) {
+	rows, err := config.DB.Query(`
+		SELECT
+			ps.name,
+			COALESCE(ps.color, '') AS color,
+			COUNT(p.id) AS total
+		FROM projects p
+		JOIN project_statuses ps ON ps.id = p.status_id
+		WHERE p.deleted_at IS NULL
+			AND ps.deleted_at IS NULL
+		GROUP BY ps.id, ps.name, ps.color
+		ORDER BY total DESC, ps.name ASC
+	`)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	defer rows.Close()
+
+	var (
+		items []models.ProjectStatusChartItem
+		total int
+	)
+
+	for rows.Next() {
+		var item models.ProjectStatusChartItem
+		if err := rows.Scan(&item.Name, &item.Color, &item.Count); err != nil {
+			return nil, 0, "", err
+		}
+		total += item.Count
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, "", err
+	}
+
+	if total == 0 || len(items) == 0 {
+		return []models.ProjectStatusChartItem{}, 0, "conic-gradient(#e2e8f0 0 100%)", nil
+	}
+
+	assigned := 0
+	for i := range items {
+		if strings.TrimSpace(items[i].Color) == "" {
+			items[i].Color = dashboardPaletteColor(i)
+		}
+
+		if i == len(items)-1 {
+			items[i].Percent = 100 - assigned
+		} else {
+			percent := int((float64(items[i].Count) / float64(total)) * 100.0)
+			items[i].Percent = percent
+			assigned += percent
+		}
+	}
+
+	var (
+		from  = 0
+		parts []string
+	)
+	for _, item := range items {
+		to := from + item.Percent
+		if to > 100 {
+			to = 100
+		}
+		if to < from {
+			to = from
+		}
+		parts = append(parts, fmt.Sprintf("%s %d%% %d%%", item.Color, from, to))
+		from = to
+	}
+	if from < 100 && len(items) > 0 {
+		lastColor := items[len(items)-1].Color
+		parts = append(parts, fmt.Sprintf("%s %d%% 100%%", lastColor, from))
+	}
+
+	return items, total, "conic-gradient(" + strings.Join(parts, ", ") + ")", nil
+}
+
+func getProjectDivisionComposition() ([]models.ProjectDivisionChartItem, error) {
+	rows, err := config.DB.Query(`
+		SELECT
+			d.name,
+			COUNT(DISTINCT pd.project_id) AS total
+		FROM project_divisions pd
+		JOIN divisions d ON d.id = pd.division_id
+		JOIN projects p ON p.id = pd.project_id
+		WHERE d.deleted_at IS NULL
+			AND p.deleted_at IS NULL
+		GROUP BY d.id, d.name
+		ORDER BY total DESC, d.name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.ProjectDivisionChartItem
+	for rows.Next() {
+		var item models.ProjectDivisionChartItem
+		if err := rows.Scan(&item.Name, &item.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(items) == 0 {
+		return []models.ProjectDivisionChartItem{}, nil
+	}
+
+	maxCount := 0
+	for _, item := range items {
+		if item.Count > maxCount {
+			maxCount = item.Count
+		}
+	}
+	if maxCount <= 0 {
+		for i := range items {
+			items[i].WidthPercent = 0
+		}
+		return items, nil
+	}
+
+	for i := range items {
+		items[i].WidthPercent = int((float64(items[i].Count) / float64(maxCount)) * 100.0)
+		if items[i].WidthPercent == 0 && items[i].Count > 0 {
+			items[i].WidthPercent = 4
+		}
+		if items[i].WidthPercent > 100 {
+			items[i].WidthPercent = 100
+		}
+	}
+
+	return items, nil
+}
+
+func dashboardPaletteColor(index int) string {
+	palette := []string{"#2563eb", "#16a34a", "#eab308", "#64748b", "#7c3aed", "#f97316", "#0ea5e9", "#ef4444"}
+	return palette[index%len(palette)]
+}
+
+func getUrgentProjects(limit int) ([]models.DashboardProjectListItem, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+
+	rows, err := config.DB.Query(`
+		SELECT
+			p.id,
+			p.name,
+			COALESCE(NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), ''), '-') AS request_division,
+			ps.name AS status_name,
+			COALESCE(ps.color, '#64748b') AS status_color,
+			COUNT(DISTINCT CASE
+				WHEN LOWER(COALESCE(tp.name, '')) IN ('high', 'urgent', 'critical', 'tinggi')
+				THEN t.id
+			END) AS high_priority_ticket_count
+		FROM projects p
+		JOIN project_statuses ps ON ps.id = p.status_id
+		LEFT JOIN project_divisions pd ON pd.project_id = p.id
+		LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
+		LEFT JOIN tickets t ON t.project_id = p.id AND t.deleted_at IS NULL
+		LEFT JOIN ticket_priorities tp ON tp.id = t.priority_id AND tp.deleted_at IS NULL
+		WHERE p.deleted_at IS NULL
+			AND ps.deleted_at IS NULL
+		GROUP BY p.id, p.name, ps.name, ps.color, p.created_at
+		HAVING high_priority_ticket_count > 0
+		ORDER BY high_priority_ticket_count DESC, p.created_at ASC, p.id ASC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.DashboardProjectListItem
+	for rows.Next() {
+		var item models.DashboardProjectListItem
+		if err := rows.Scan(
+			&item.ID,
+			&item.Name,
+			&item.RequestDivision,
+			&item.StatusName,
+			&item.StatusColor,
+			&item.HighPriorityTicketCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func getRequestQueueProjects(limit int) ([]models.DashboardProjectListItem, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+
+	rows, err := config.DB.Query(`
+		SELECT
+			p.id,
+			p.name,
+			COALESCE(NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), ''), '-') AS request_division,
+			ps.name AS status_name,
+			COALESCE(ps.color, '#64748b') AS status_color
+		FROM projects p
+		JOIN project_statuses ps ON ps.id = p.status_id
+		LEFT JOIN project_divisions pd ON pd.project_id = p.id
+		LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
+		WHERE p.deleted_at IS NULL
+			AND ps.deleted_at IS NULL
+			AND (
+				LOWER(ps.name) LIKE '%request%'
+				OR LOWER(ps.name) LIKE '%menunggu%'
+				OR LOWER(ps.name) LIKE '%antrian%'
+				OR LOWER(ps.name) LIKE '%queue%'
+				OR LOWER(ps.name) LIKE '%waiting%'
+				OR LOWER(ps.name) LIKE '%backlog%'
+			)
+		GROUP BY p.id, p.name, ps.name, ps.color, p.created_at
+		ORDER BY p.created_at ASC, p.id ASC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.DashboardProjectListItem
+	for rows.Next() {
+		var item models.DashboardProjectListItem
+		if err := rows.Scan(
+			&item.ID,
+			&item.Name,
+			&item.RequestDivision,
+			&item.StatusName,
+			&item.StatusColor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
 }
 
 func getImplementationProjects() ([]models.Project, error) {

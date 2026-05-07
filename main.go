@@ -57,12 +57,20 @@ func main() {
 	r.Static("/assets", "./assets")
 
 	useSecureCookie := strings.ToLower(os.Getenv("APP_SECURE_COOKIE")) == "true"
+	sessionName := strings.TrimSpace(os.Getenv("APP_SESSION_NAME"))
+	if sessionName == "" {
+		sessionName = "pm_session"
+	}
+	sessionSecret := strings.TrimSpace(os.Getenv("APP_SESSION_SECRET"))
+	if sessionSecret == "" {
+		sessionSecret = "pm-session-secret-change-this"
+	}
 
 	// Register custom session payload for gob encoder used by cookie store.
 	gob.Register(models.SessionUser{})
 
 	// SESSION - must be registered BEFORE routes that use sessions
-	store := cookie.NewStore([]byte("secret-key"))
+	store := cookie.NewStore([]byte(sessionSecret))
 	store.Options(sessions.Options{
 		Path:     "/",
 		MaxAge:   60 * 60 * 8, // 8 jam
@@ -71,7 +79,7 @@ func main() {
 		Secure:   useSecureCookie,
 		SameSite: http.SameSiteLaxMode,
 	})
-	r.Use(sessions.Sessions("mysession", store))
+	r.Use(sessions.Sessions(sessionName, store))
 
 	// Register application routes
 	routes.RegisterWebRoutes(r)
