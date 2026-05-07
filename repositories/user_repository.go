@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	"gobase-app/models"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,6 +18,7 @@ type UserCreateParams struct {
 	HashedPassword string
 	Name           string
 	Email          string
+	DivisionIDs    []int64
 }
 
 type UserUpdateParams struct {
@@ -24,6 +26,7 @@ type UserUpdateParams struct {
 	HashedPassword string
 	Name           string
 	Email          string
+	DivisionIDs    []int64
 }
 
 // GetAll mengambil seluruh data user aktif beserta role yang terkait.
@@ -33,9 +36,13 @@ func (r *UserRepository) GetAll() ([]models.User, error) {
 			u.id,
 			u.name, 
 			u.email, 
+			COALESCE(GROUP_CONCAT(DISTINCT d.id ORDER BY d.id SEPARATOR ','), '') AS division_ids_csv,
+			COALESCE(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), '') AS division_display,
 			u.created_at,
 			COALESCE(GROUP_CONCAT(DISTINCT r2.name ORDER BY r2.name SEPARATOR ', '), '') AS role_display
 		FROM users u
+		LEFT JOIN user_divisions ud ON ud.user_id = u.id
+		LEFT JOIN divisions d ON d.id = ud.division_id AND d.deleted_at IS NULL
 		LEFT JOIN model_has_roles mhr ON mhr.model_id = u.id AND mhr.model_type = ?
 		LEFT JOIN roles r2 ON r2.id = mhr.role_id
 		WHERE u.deleted_at IS NULL
@@ -50,14 +57,17 @@ func (r *UserRepository) GetAll() ([]models.User, error) {
 	var users []models.User
 	for rows.Next() {
 		var (
-			u         models.User
-			createdAt time.Time
+			u              models.User
+			divisionIDsCSV string
+			createdAt      time.Time
 		)
 
 		if err := rows.Scan(
 			&u.ID,
 			&u.Name,
 			&u.Email,
+			&divisionIDsCSV,
+			&u.DivisionDisplay,
 			&createdAt,
 			&u.RoleDisplay,
 		); err != nil {
@@ -66,6 +76,11 @@ func (r *UserRepository) GetAll() ([]models.User, error) {
 
 		u.CreatedAt = createdAt.Format("2006-01-02 15:04:05")
 		u.CreatedAtDisplay = createdAt.Format("02 Jan 2006 15:04:05")
+		u.DivisionIDs = splitCSVToIntSlice(divisionIDsCSV)
+		u.DivisionNames = splitAndTrimCSV(u.DivisionDisplay)
+		if u.DivisionDisplay == "" {
+			u.DivisionDisplay = "-"
+		}
 		if u.RoleDisplay == "" {
 			u.RoleDisplay = "-"
 		}
@@ -96,6 +111,25 @@ func (r *UserRepository) CreateUserWithRoles(params UserCreateParams, roleIDs []
 	if err != nil {
 		tx.Rollback()
 		return 0, err
+	}
+
+	if len(params.DivisionIDs) > 0 {
+		stmt, err := tx.Prepare(`
+			INSERT INTO user_divisions (user_id, division_id, created_at, updated_at)
+			VALUES (?, ?, NOW(), NOW())
+		`)
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+		defer stmt.Close()
+
+		for _, divisionID := range params.DivisionIDs {
+			if _, err := stmt.Exec(userID, divisionID); err != nil {
+				tx.Rollback()
+				return 0, err
+			}
+		}
 	}
 
 	if len(roleIDs) > 0 {
@@ -152,6 +186,30 @@ func (r *UserRepository) UpdateUserWithRoles(params UserUpdateParams, roleIDs []
 		}
 	}
 
+	if _, err := tx.Exec(`DELETE FROM user_divisions WHERE user_id = ?`, params.ID); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if len(params.DivisionIDs) > 0 {
+		stmt, err := tx.Prepare(`
+			INSERT INTO user_divisions (user_id, division_id, created_at, updated_at)
+			VALUES (?, ?, NOW(), NOW())
+		`)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		defer stmt.Close()
+
+		for _, divisionID := range params.DivisionIDs {
+			if _, err := stmt.Exec(params.ID, divisionID); err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+
 	if _, err := tx.Exec(`DELETE FROM model_has_roles WHERE model_id = ? AND model_type = ?`, params.ID, userModelType); err != nil {
 		tx.Rollback()
 		return err
@@ -177,6 +235,67 @@ func (r *UserRepository) UpdateUserWithRoles(params UserUpdateParams, roleIDs []
 	}
 
 	return tx.Commit()
+}
+
+// GetDivisions mengambil daftar divisi aktif untuk kebutuhan dropdown user.
+func (r *UserRepository) GetDivisions() ([]models.DivisionOption, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, name
+		FROM divisions
+		WHERE deleted_at IS NULL
+		ORDER BY name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var divisions []models.DivisionOption
+	for rows.Next() {
+		var division models.DivisionOption
+		if err := rows.Scan(&division.ID, &division.Name); err != nil {
+			return nil, err
+		}
+		divisions = append(divisions, division)
+	}
+
+	return divisions, rows.Err()
+}
+
+// FindExistingDivisionIDs mengembalikan map id divisi yang ditemukan di database.
+func (r *UserRepository) FindExistingDivisionIDs(ids []int64) (map[int64]bool, error) {
+	result := make(map[int64]bool)
+	if len(ids) == 0 {
+		return result, nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := `
+		SELECT id
+		FROM divisions
+		WHERE id IN (` + strings.Join(placeholders, ",") + `) AND deleted_at IS NULL
+	`
+	rows, err := r.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		result[id] = true
+	}
+
+	return result, rows.Err()
 }
 
 // ExistsByEmail mengecek apakah email sudah digunakan.
@@ -260,6 +379,28 @@ func splitAndTrimCSV(val string) []string {
 		if p != "" {
 			result = append(result, p)
 		}
+	}
+	return result
+}
+
+func splitCSVToIntSlice(val string) []int {
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return nil
+	}
+
+	parts := strings.Split(val, ",")
+	result := make([]int, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		id, err := strconv.Atoi(p)
+		if err != nil || id <= 0 {
+			continue
+		}
+		result = append(result, id)
 	}
 	return result
 }

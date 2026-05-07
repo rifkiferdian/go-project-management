@@ -5,6 +5,9 @@ type User struct {
 	ID               int
 	Name             string
 	Email            string
+	DivisionDisplay  string
+	DivisionNames    []string
+	DivisionIDs      []int
 	RoleDisplay      string
 	RoleNames        []string
 	CreatedAt        string
@@ -13,17 +16,25 @@ type User struct {
 
 // UserCreateInput menampung data yang dikirimkan dari form create user.
 type UserCreateInput struct {
-	Name      string
-	Email     string
-	Password  string
-	RoleNames []string
+	Name        string
+	Email       string
+	Password    string
+	DivisionIDs []int64
+	RoleNames   []string
 }
 
 // UserUpdateInput menampung data yang dikirimkan dari form edit user.
 type UserUpdateInput struct {
-	ID        int
-	Name      string
-	Email     string
-	Password  string
-	RoleNames []string
+	ID          int
+	Name        string
+	Email       string
+	Password    string
+	DivisionIDs []int64
+	RoleNames   []string
+}
+
+// DivisionOption merepresentasikan data divisi untuk dropdown form user.
+type DivisionOption struct {
+	ID   int
+	Name string
 }

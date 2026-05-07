@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"gobase-app/config"
 	"gobase-app/models"
 	"gobase-app/repositories"
@@ -37,11 +38,18 @@ func UserStore(c *gin.Context) {
 		return
 	}
 
+	divisionIDs, err := parseIDList(c.PostFormArray("divisions"))
+	if err != nil {
+		renderUserPage(c, userSvc, "divisi tidak valid")
+		return
+	}
+
 	input := models.UserCreateInput{
-		Name:      strings.TrimSpace(form.Name),
-		Password:  form.Password,
-		Email:     strings.TrimSpace(form.Email),
-		RoleNames: c.PostFormArray("roles"),
+		Name:        strings.TrimSpace(form.Name),
+		Password:    form.Password,
+		Email:       strings.TrimSpace(form.Email),
+		DivisionIDs: divisionIDs,
+		RoleNames:   c.PostFormArray("roles"),
 	}
 
 	if err := userSvc.CreateUser(input); err != nil {
@@ -72,12 +80,19 @@ func UserUpdate(c *gin.Context) {
 		return
 	}
 
+	divisionIDs, err := parseIDList(c.PostFormArray("divisions"))
+	if err != nil {
+		renderUserPage(c, userSvc, "divisi tidak valid")
+		return
+	}
+
 	input := models.UserUpdateInput{
-		ID:        form.ID,
-		Name:      strings.TrimSpace(form.Name),
-		Password:  form.Password,
-		Email:     strings.TrimSpace(form.Email),
-		RoleNames: c.PostFormArray("roles"),
+		ID:          form.ID,
+		Name:        strings.TrimSpace(form.Name),
+		Password:    form.Password,
+		Email:       strings.TrimSpace(form.Email),
+		DivisionIDs: divisionIDs,
+		RoleNames:   c.PostFormArray("roles"),
 	}
 
 	if err := userSvc.UpdateUser(input); err != nil {
@@ -86,6 +101,25 @@ func UserUpdate(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusSeeOther, "/users")
+}
+
+func parseIDList(values []string) ([]int64, error) {
+	result := make([]int64, 0, len(values))
+	for _, raw := range values {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		if id <= 0 {
+			return nil, errors.New("invalid id")
+		}
+		result = append(result, id)
+	}
+	return result, nil
 }
 
 // UserDelete menghapus data user berdasarkan ID.
@@ -121,12 +155,18 @@ func renderUserPage(c *gin.Context, userService *services.UserService, message s
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+	divisions, err := userService.GetDivisions()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	Render(c, "user.html", gin.H{
-		"Title": "Daftar User",
-		"Page":  "user",
-		"users": users,
-		"roles": roles,
-		"Error": message,
+		"Title":     "Daftar User",
+		"Page":      "user",
+		"users":     users,
+		"roles":     roles,
+		"divisions": divisions,
+		"Error":     message,
 	})
 }

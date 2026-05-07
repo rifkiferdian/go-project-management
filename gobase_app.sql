@@ -50,6 +50,31 @@ INSERT INTO `activities` (`id`, `name`, `description`, `created_at`, `updated_at
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `divisions`
+--
+
+CREATE TABLE `divisions` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `divisions`
+--
+
+INSERT INTO `divisions` (`id`, `name`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'HRS', '2026-05-07 00:00:00', '2026-05-07 00:00:00', NULL),
+(2, 'Accounting', '2026-05-07 00:00:00', '2026-05-07 00:00:00', NULL),
+(3, 'IT', '2026-05-07 00:00:00', '2026-05-07 00:00:00', NULL),
+(4, 'Marketing', '2026-05-07 00:00:00', '2026-05-07 00:00:00', NULL),
+(5, 'Operations', '2026-05-07 00:00:00', '2026-05-07 00:00:00', NULL);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `epics`
 --
 
@@ -908,6 +933,29 @@ INSERT INTO `users` (`id`, `name`, `email`, `email_verified_at`, `password`, `tw
 (1, 'Rifki Ahmad', 'admin@gmail.com', '2026-04-12 21:56:57', '$2y$10$iycFuTntX6Uc8FueGz9mb.Yr/1UOJ8foB3EVVnIpGz.wce47gsHQm', NULL, NULL, NULL, NULL, '2026-04-12 21:56:57', '2026-04-12 22:21:46', NULL, NULL, 'db', NULL, NULL),
 (2, 'admin', 'asd@gmail.com', '2026-04-27 07:16:15', '$2y$10$iycFuTntX6Uc8FueGz9mb.Yr/1UOJ8foB3EVVnIpGz.wce47gsHQm', NULL, NULL, NULL, NULL, '2026-04-27 00:15:26', '2026-04-27 00:15:26', NULL, NULL, 'db', NULL, NULL);
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_divisions`
+--
+
+CREATE TABLE `user_divisions` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` bigint(20) UNSIGNED NOT NULL,
+  `division_id` bigint(20) UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `user_divisions`
+--
+
+INSERT INTO `user_divisions` (`id`, `user_id`, `division_id`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, '2026-05-07 00:00:00', '2026-05-07 00:00:00'),
+(2, 1, 3, '2026-05-07 00:00:00', '2026-05-07 00:00:00'),
+(3, 2, 3, '2026-05-07 00:00:00', '2026-05-07 00:00:00');
+
 --
 -- Indexes for dumped tables
 --
@@ -917,6 +965,13 @@ INSERT INTO `users` (`id`, `name`, `email`, `email_verified_at`, `password`, `tw
 --
 ALTER TABLE `activities`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `divisions`
+--
+ALTER TABLE `divisions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `divisions_name_unique` (`name`);
 
 --
 -- Indexes for table `epics`
@@ -1163,6 +1218,15 @@ ALTER TABLE `users`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `user_divisions`
+--
+ALTER TABLE `user_divisions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_divisions_user_division_unique` (`user_id`,`division_id`),
+  ADD KEY `user_divisions_user_id_foreign` (`user_id`),
+  ADD KEY `user_divisions_division_id_foreign` (`division_id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -1170,6 +1234,12 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activities`
 --
 ALTER TABLE `activities`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `divisions`
+--
+ALTER TABLE `divisions`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
@@ -1335,6 +1405,12 @@ ALTER TABLE `users`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
+-- AUTO_INCREMENT for table `user_divisions`
+--
+ALTER TABLE `user_divisions`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
 -- Constraints for dumped tables
 --
 
@@ -1455,6 +1531,13 @@ ALTER TABLE `ticket_statuses`
 ALTER TABLE `ticket_subscribers`
   ADD CONSTRAINT `ticket_subscribers_ticket_id_foreign` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`),
   ADD CONSTRAINT `ticket_subscribers_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `user_divisions`
+--
+ALTER TABLE `user_divisions`
+  ADD CONSTRAINT `user_divisions_division_id_foreign` FOREIGN KEY (`division_id`) REFERENCES `divisions` (`id`),
+  ADD CONSTRAINT `user_divisions_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -42,6 +42,7 @@
                                                 <th class="px-3 py-2 text-left font-semibold">#</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Nama</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Email</th>
+                                                <th class="px-3 py-2 text-left font-semibold">Divisi</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Role</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Created At</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Aksi</th>
@@ -53,13 +54,14 @@
                                                 <td class="px-3 py-3 text-slate-500">{{ no $i 1 }}</td>
                                                 <td class="px-3 py-3 font-semibold text-slate-700">{{ $user.Name }}</td>
                                                 <td class="px-3 py-3 text-slate-600">{{ $user.Email }}</td>
+                                                <td class="px-3 py-3 text-slate-600">{{ $user.DivisionDisplay }}</td>
                                                 <td class="px-3 py-3">
                                                     <span class="inline-flex items-center justify-center truncate rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600" style="max-width: 9rem;" title="{{ $user.RoleDisplay }}">{{ $user.RoleDisplay }}</span>
                                                 </td>
                                                 <td class="px-3 py-3 text-slate-600">{{ $user.CreatedAtDisplay }}</td>
                                                 <td class="px-3 py-3">
                                                     <div class="flex flex-wrap items-center gap-2">
-                                                        <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-user" data-user-id="{{ $user.ID }}" data-name="{{ $user.Name }}" data-email="{{ $user.Email }}" data-roles="{{ range $idx, $role := $user.RoleNames }}{{ if $idx }},{{ end }}{{ $role }}{{ end }}">
+                                                        <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-user" data-user-id="{{ $user.ID }}" data-name="{{ $user.Name }}" data-email="{{ $user.Email }}" data-divisions="{{ range $idx, $divisionID := $user.DivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-roles="{{ range $idx, $role := $user.RoleNames }}{{ if $idx }},{{ end }}{{ $role }}{{ end }}">
                                                             <i class="bx bx-pen text-sm"></i>
                                                             Edit
                                                         </button>
@@ -72,7 +74,7 @@
                                             </tr>
                                             {{ else }}
                                             <tr>
-                                                <td colspan="6" class="px-3 py-6 text-center text-sm text-slate-500">Belum ada data user</td>
+                                                <td colspan="7" class="px-3 py-6 text-center text-sm text-slate-500">Belum ada data user</td>
                                             </tr>
                                             {{ end }}
                                         </tbody>
@@ -110,6 +112,14 @@
                             <div>
                                 <label for="userPassword" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Password</label>
                                 <input type="password" name="password" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" id="userPassword">
+                            </div>
+                            <div>
+                                <label for="userDivisions" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Divisi</label>
+                                <select name="divisions" id="userDivisions" class="mt-2 h-32 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" multiple required>
+                                    {{ range .divisions }}
+                                        <option value="{{ .ID }}">{{ .Name }}</option>
+                                    {{ end }}
+                                </select>
                             </div>
                         </div>
                         <div class="space-y-4">
@@ -153,6 +163,14 @@
                             <div>
                                 <label for="edit_userPassword" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Password</label>
                                 <input type="password" name="password" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" id="edit_userPassword" placeholder="Kosongkan jika tidak diubah">
+                            </div>
+                            <div>
+                                <label for="edit_userDivisions" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Divisi</label>
+                                <select name="divisions" id="edit_userDivisions" class="mt-2 h-32 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" multiple required>
+                                    {{ range .divisions }}
+                                        <option value="{{ .ID }}">{{ .Name }}</option>
+                                    {{ end }}
+                                </select>
                             </div>
                         </div>
                         <div class="space-y-4">
@@ -272,6 +290,7 @@
                         editModalEl.querySelector('#edit_name').value = btn.getAttribute('data-name') || '';
                         editModalEl.querySelector('#edit_email').value = btn.getAttribute('data-email') || '';
                         editModalEl.querySelector('#edit_userPassword').value = '';
+                        setMultiSelect(editModalEl.querySelector('#edit_userDivisions'), parseListAttr(btn.getAttribute('data-divisions')));
                         setMultiSelect(editModalEl.querySelector('#edit_userRoles'), parseListAttr(btn.getAttribute('data-roles')));
 
                         openModal('userEditModal');

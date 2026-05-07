@@ -21,6 +21,10 @@ func (s *UserService) GetUsers() ([]models.User, error) {
 	return s.Repo.GetAll()
 }
 
+func (s *UserService) GetDivisions() ([]models.DivisionOption, error) {
+	return s.Repo.GetDivisions()
+}
+
 // CreateUser memproses data dari form, validasi dasar, hashing password,
 // lalu menyimpan user beserta role yang dipilih.
 func (s *UserService) CreateUser(input models.UserCreateInput) error {
@@ -36,6 +40,10 @@ func (s *UserService) CreateUser(input models.UserCreateInput) error {
 	if _, err := mail.ParseAddress(email); err != nil {
 		return errors.New("email tidak valid")
 	}
+	divisionIDs := uniqueInt64s(input.DivisionIDs)
+	if len(divisionIDs) == 0 {
+		return errors.New("minimal pilih 1 divisi")
+	}
 
 	exists, err := s.Repo.ExistsByEmail(email)
 	if err != nil {
@@ -43,6 +51,20 @@ func (s *UserService) CreateUser(input models.UserCreateInput) error {
 	}
 	if exists {
 		return fmt.Errorf("email %s sudah digunakan", email)
+	}
+
+	existingDivisionMap, err := s.Repo.FindExistingDivisionIDs(divisionIDs)
+	if err != nil {
+		return err
+	}
+	var missingDivisions []string
+	for _, divisionID := range divisionIDs {
+		if !existingDivisionMap[divisionID] {
+			missingDivisions = append(missingDivisions, fmt.Sprintf("%d", divisionID))
+		}
+	}
+	if len(missingDivisions) > 0 {
+		return fmt.Errorf("divisi tidak ditemukan: %s", strings.Join(missingDivisions, ", "))
 	}
 
 	roleNames := uniqueStrings(input.RoleNames)
@@ -75,6 +97,7 @@ func (s *UserService) CreateUser(input models.UserCreateInput) error {
 		HashedPassword: string(hashedPassword),
 		Name:           name,
 		Email:          email,
+		DivisionIDs:    divisionIDs,
 	}, roleIDs)
 
 	return err
@@ -97,6 +120,10 @@ func (s *UserService) UpdateUser(input models.UserUpdateInput) error {
 	if _, err := mail.ParseAddress(email); err != nil {
 		return errors.New("email tidak valid")
 	}
+	divisionIDs := uniqueInt64s(input.DivisionIDs)
+	if len(divisionIDs) == 0 {
+		return errors.New("minimal pilih 1 divisi")
+	}
 
 	exists, err := s.Repo.ExistsByEmailExceptID(email, input.ID)
 	if err != nil {
@@ -104,6 +131,20 @@ func (s *UserService) UpdateUser(input models.UserUpdateInput) error {
 	}
 	if exists {
 		return fmt.Errorf("email %s sudah digunakan", email)
+	}
+
+	existingDivisionMap, err := s.Repo.FindExistingDivisionIDs(divisionIDs)
+	if err != nil {
+		return err
+	}
+	var missingDivisions []string
+	for _, divisionID := range divisionIDs {
+		if !existingDivisionMap[divisionID] {
+			missingDivisions = append(missingDivisions, fmt.Sprintf("%d", divisionID))
+		}
+	}
+	if len(missingDivisions) > 0 {
+		return fmt.Errorf("divisi tidak ditemukan: %s", strings.Join(missingDivisions, ", "))
 	}
 
 	roleNames := uniqueStrings(input.RoleNames)
@@ -141,6 +182,7 @@ func (s *UserService) UpdateUser(input models.UserUpdateInput) error {
 		HashedPassword: hashedPassword,
 		Name:           name,
 		Email:          email,
+		DivisionIDs:    divisionIDs,
 	}, roleIDs)
 }
 
@@ -232,6 +274,19 @@ func uniqueStrings(values []string) []string {
 	for _, v := range values {
 		v = strings.TrimSpace(v)
 		if v == "" || seen[v] {
+			continue
+		}
+		seen[v] = true
+		result = append(result, v)
+	}
+	return result
+}
+
+func uniqueInt64s(values []int64) []int64 {
+	seen := make(map[int64]bool)
+	var result []int64
+	for _, v := range values {
+		if v <= 0 || seen[v] {
 			continue
 		}
 		seen[v] = true
