@@ -52,7 +52,13 @@ func DashboardIndex(c *gin.Context) {
 		return
 	}
 
-	implementationProjects, err := getImplementationProjects()
+	kanbanStatuses, err := getProjectKanbanStatuses()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	kanbanProjects, err := getProjectKanbanProjects()
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -101,7 +107,8 @@ func DashboardIndex(c *gin.Context) {
 		"DivisionChartItems":          divisionChartItems,
 		"UrgentProjects":              urgentProjects,
 		"RequestQueueProjects":        requestQueueProjects,
-		"ImplementationProjects":      implementationProjects,
+		"KanbanStatuses":              kanbanStatuses,
+		"KanbanProjects":              kanbanProjects,
 		"RecentTicketActivities":      recentTicketActivities,
 	})
 
@@ -111,7 +118,7 @@ func getProjectStatusComposition() ([]models.ProjectStatusChartItem, int, string
 	rows, err := config.DB.Query(`
 		SELECT
 			ps.name,
-			COALESCE(ps.color, '') AS color,
+			COALESCE(NULLIF(TRIM(ps.color), ''), '#cecece') AS color,
 			COUNT(p.id) AS total
 		FROM projects p
 		JOIN project_statuses ps ON ps.id = p.status_id
@@ -148,10 +155,6 @@ func getProjectStatusComposition() ([]models.ProjectStatusChartItem, int, string
 
 	assigned := 0
 	for i := range items {
-		if strings.TrimSpace(items[i].Color) == "" {
-			items[i].Color = dashboardPaletteColor(i)
-		}
-
 		if i == len(items)-1 {
 			items[i].Percent = 100 - assigned
 		} else {
@@ -242,11 +245,6 @@ func getProjectDivisionComposition() ([]models.ProjectDivisionChartItem, error) 
 	}
 
 	return items, nil
-}
-
-func dashboardPaletteColor(index int) string {
-	palette := []string{"#2563eb", "#16a34a", "#eab308", "#64748b", "#7c3aed", "#f97316", "#0ea5e9", "#ef4444"}
-	return palette[index%len(palette)]
 }
 
 func getUrgentProjects(limit int) ([]models.DashboardProjectListItem, error) {
@@ -355,30 +353,49 @@ func getRequestQueueProjects(limit int) ([]models.DashboardProjectListItem, erro
 	return items, rows.Err()
 }
 
-func getImplementationProjects() ([]models.Project, error) {
+func getProjectKanbanStatuses() ([]models.ProjectStatusOption, error) {
+	rows, err := config.DB.Query(`
+		SELECT id, name, COALESCE(NULLIF(TRIM(color), ''), '#cecece') AS color
+		FROM project_statuses
+		WHERE deleted_at IS NULL
+		ORDER BY id ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var statuses []models.ProjectStatusOption
+	for rows.Next() {
+		var item models.ProjectStatusOption
+		if err := rows.Scan(&item.ID, &item.Name, &item.Color); err != nil {
+			return nil, err
+		}
+		statuses = append(statuses, item)
+	}
+
+	return statuses, rows.Err()
+}
+
+func getProjectKanbanProjects() ([]models.Project, error) {
 	rows, err := config.DB.Query(`
 		SELECT
 			p.id,
 			p.name,
-			COALESCE(p.description, '') AS description,
-			u.name AS owner_name,
+			COALESCE(NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), ''), '-') AS request_division,
+			p.status_id,
 			ps.name AS status_name,
-			ps.color AS status_color,
-			p.ticket_prefix,
-			p.type,
-			COUNT(DISTINCT t.id) AS ticket_count,
+			COALESCE(NULLIF(TRIM(ps.color), ''), '#cecece') AS status_color,
 			p.created_at
 		FROM projects p
-		JOIN users u ON u.id = p.owner_id
 		JOIN project_statuses ps ON ps.id = p.status_id
-		LEFT JOIN tickets t ON t.project_id = p.id AND t.deleted_at IS NULL
+		LEFT JOIN project_divisions pd ON pd.project_id = p.id
+		LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
 		WHERE p.deleted_at IS NULL
 			AND ps.deleted_at IS NULL
-			AND LOWER(ps.name) = 'implementation'
 		GROUP BY
-			p.id, p.name, p.description, u.name, ps.name, ps.color,
-			p.ticket_prefix, p.type, p.created_at
-		ORDER BY p.created_at DESC
+			p.id, p.name, ps.id, ps.name, ps.color, p.created_at
+		ORDER BY p.created_at DESC, p.id DESC
 	`)
 	if err != nil {
 		return nil, err
@@ -395,13 +412,10 @@ func getImplementationProjects() ([]models.Project, error) {
 		if err := rows.Scan(
 			&project.ID,
 			&project.Name,
-			&project.Description,
-			&project.OwnerName,
+			&project.RequestDivision,
+			&project.StatusID,
 			&project.StatusName,
 			&project.StatusColor,
-			&project.TicketPrefix,
-			&project.Type,
-			&project.TicketCount,
 			&createdAt,
 		); err != nil {
 			return nil, err
