@@ -37,6 +37,10 @@ func (s *ProjectService) GetStatusOptions() ([]models.ProjectStatusOption, error
 	return s.Repo.GetStatusOptions()
 }
 
+func (s *ProjectService) GetDivisionOptions() ([]models.DivisionOption, error) {
+	return s.Repo.GetDivisionOptions()
+}
+
 func (s *ProjectService) CreateProject(input models.ProjectCreateInput) error {
 	params, err := s.validateCreateInput(input)
 	if err != nil {
@@ -66,12 +70,16 @@ func (s *ProjectService) validateCreateInput(input models.ProjectCreateInput) (m
 	description := strings.TrimSpace(input.Description)
 	statusType := normalizeProjectStatusType(input.StatusType)
 	projectType := normalizeProjectType(input.Type)
+	divisionIDs := uniqueInt64s(input.DivisionIDs)
 
 	if name == "" {
 		return input, errors.New("nama project wajib diisi")
 	}
 	if input.OwnerID <= 0 {
 		return input, errors.New("owner project wajib dipilih")
+	}
+	if len(divisionIDs) == 0 {
+		return input, errors.New("minimal pilih 1 divisi requester")
 	}
 	if input.StatusID <= 0 {
 		return input, errors.New("status project wajib dipilih")
@@ -88,8 +96,23 @@ func (s *ProjectService) validateCreateInput(input models.ProjectCreateInput) (m
 		return input, fmt.Errorf("ticket prefix %s sudah digunakan", prefix)
 	}
 
+	existingDivisionMap, err := s.Repo.FindExistingDivisionIDs(divisionIDs)
+	if err != nil {
+		return input, err
+	}
+	var missingDivisions []string
+	for _, divisionID := range divisionIDs {
+		if !existingDivisionMap[divisionID] {
+			missingDivisions = append(missingDivisions, fmt.Sprintf("%d", divisionID))
+		}
+	}
+	if len(missingDivisions) > 0 {
+		return input, fmt.Errorf("divisi requester tidak ditemukan: %s", strings.Join(missingDivisions, ", "))
+	}
+
 	input.Name = name
 	input.Description = description
+	input.DivisionIDs = divisionIDs
 	input.TicketPrefix = prefix
 	input.StatusType = statusType
 	input.Type = projectType
@@ -106,12 +129,16 @@ func (s *ProjectService) validateUpdateInput(input models.ProjectUpdateInput) (m
 	description := strings.TrimSpace(input.Description)
 	statusType := normalizeProjectStatusType(input.StatusType)
 	projectType := normalizeProjectType(input.Type)
+	divisionIDs := uniqueInt64s(input.DivisionIDs)
 
 	if name == "" {
 		return input, errors.New("nama project wajib diisi")
 	}
 	if input.OwnerID <= 0 {
 		return input, errors.New("owner project wajib dipilih")
+	}
+	if len(divisionIDs) == 0 {
+		return input, errors.New("minimal pilih 1 divisi requester")
 	}
 	if input.StatusID <= 0 {
 		return input, errors.New("status project wajib dipilih")
@@ -128,8 +155,23 @@ func (s *ProjectService) validateUpdateInput(input models.ProjectUpdateInput) (m
 		return input, fmt.Errorf("ticket prefix %s sudah digunakan", prefix)
 	}
 
+	existingDivisionMap, err := s.Repo.FindExistingDivisionIDs(divisionIDs)
+	if err != nil {
+		return input, err
+	}
+	var missingDivisions []string
+	for _, divisionID := range divisionIDs {
+		if !existingDivisionMap[divisionID] {
+			missingDivisions = append(missingDivisions, fmt.Sprintf("%d", divisionID))
+		}
+	}
+	if len(missingDivisions) > 0 {
+		return input, fmt.Errorf("divisi requester tidak ditemukan: %s", strings.Join(missingDivisions, ", "))
+	}
+
 	input.Name = name
 	input.Description = description
+	input.DivisionIDs = divisionIDs
 	input.TicketPrefix = prefix
 	input.StatusType = statusType
 	input.Type = projectType

@@ -60,6 +60,7 @@
                                                     <th class="px-3 py-2 text-left font-semibold">#</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Project</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Owner</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Divisi Requester</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Status</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Type</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Prefix</th>
@@ -77,6 +78,7 @@
                                                         <div class="mt-1 text-xs text-slate-400">{{ $project.CreatedAtDisplay }}</div>
                                                     </td>
                                                     <td class="px-3 py-3 text-slate-600">{{ $project.OwnerName }}</td>
+                                                    <td class="px-3 py-3 text-slate-600">{{ $project.RequestDivision }}</td>
                                                     <td class="px-3 py-3">
                                                         <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                                                             <span class="inline-flex h-2.5 w-2.5 rounded-full" style="background-color: {{ $project.StatusColor }};"></span>
@@ -89,7 +91,7 @@
                                                     <td class="px-3 py-3 text-slate-600">{{ $project.TicketCount }}</td>
                                                     <td class="px-3 py-3">
                                                         <div class="flex flex-wrap items-center gap-2">
-                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-status-id="{{ $project.StatusID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
+                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
                                                             </button>
@@ -102,7 +104,7 @@
                                                 </tr>
                                                 {{ else }}
                                                 <tr>
-                                                    <td colspan="9" class="px-3 py-6 text-center text-sm text-slate-500">Belum ada data project</td>
+                                                    <td colspan="10" class="px-3 py-6 text-center text-sm text-slate-500">Belum ada data project</td>
                                                 </tr>
                                                 {{ end }}
                                             </tbody>
@@ -150,6 +152,10 @@
                                                                 {{ $project.OwnerName }}
                                                             </span>
                                                             <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                                                                <i class="bx bx-buildings text-sm"></i>
+                                                                {{ $project.RequestDivision }}
+                                                            </span>
+                                                            <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                                                                 <i class="bx bx-purchase-tag-alt text-sm"></i>
                                                                 {{ $project.TicketPrefix }}
                                                             </span>
@@ -159,7 +165,7 @@
                                                             <span>{{ $project.TicketCount }} ticket</span>
                                                         </div>
                                                         <div class="mt-4 flex flex-wrap items-center gap-2">
-                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-status-id="{{ $project.StatusID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
+                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
                                                             </button>
@@ -228,6 +234,14 @@
                                 </select>
                             </div>
                             <div>
+                                <label for="request_divisions" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Divisi Requester</label>
+                                <select id="request_divisions" class="mt-2 h-32 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" name="request_divisions" multiple required>
+                                    {{ range .divisions }}
+                                    <option value="{{ .ID }}">{{ .Name }}</option>
+                                    {{ end }}
+                                </select>
+                            </div>
+                            <div>
                                 <label for="status_id" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Status</label>
                                 <select id="status_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" name="status_id" required>
                                     <option value="">Pilih status</option>
@@ -291,6 +305,14 @@
                                     <option value="">Pilih owner</option>
                                     {{ range .users }}
                                     <option value="{{ .ID }}">{{ .Name }} ({{ .Email }})</option>
+                                    {{ end }}
+                                </select>
+                            </div>
+                            <div>
+                                <label for="edit_request_divisions" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Divisi Requester</label>
+                                <select id="edit_request_divisions" class="mt-2 h-32 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" name="request_divisions" multiple required>
+                                    {{ range .divisions }}
+                                    <option value="{{ .ID }}">{{ .Name }}</option>
                                     {{ end }}
                                 </select>
                             </div>
@@ -439,6 +461,7 @@
                         modal.querySelector('#edit_name').value = btn.getAttribute('data-name') || '';
                         modal.querySelector('#edit_description').value = btn.getAttribute('data-description') || '';
                         modal.querySelector('#edit_owner_id').value = btn.getAttribute('data-owner-id') || '';
+                        setMultiSelect(modal.querySelector('#edit_request_divisions'), parseListAttr(btn.getAttribute('data-request-divisions')));
                         modal.querySelector('#edit_status_id').value = btn.getAttribute('data-status-id') || '';
                         modal.querySelector('#edit_ticket_prefix').value = btn.getAttribute('data-ticket-prefix') || '';
                         modal.querySelector('#edit_status_type').value = btn.getAttribute('data-status-type') || 'default';
@@ -446,6 +469,17 @@
                         openModal('projectEditModal');
                     });
                 });
+
+                function parseListAttr(val) {
+                    if (!val) return [];
+                    return val.split(',').map(function (item) { return item.trim(); }).filter(Boolean);
+                }
+                function setMultiSelect(selectEl, values) {
+                    if (!selectEl) return;
+                    var lookup = new Set(values);
+                    Array.from(selectEl.options).forEach(function (opt) { opt.selected = lookup.has(opt.value); });
+                }
+                setMultiSelect(document.getElementById('request_divisions'), parseListAttr('{{ with .Old }}{{ range $idx, $divisionID := .RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}{{ end }}'));
 
                 {{ if .Error }}
                 openModal('projectModal');

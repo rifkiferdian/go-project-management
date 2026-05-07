@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	"gobase-app/models"
+	"strings"
 	"time"
 )
 
@@ -19,6 +20,8 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 			COALESCE(p.description, '') AS description,
 			p.owner_id,
 			u.name AS owner_name,
+			COALESCE(GROUP_CONCAT(DISTINCT d.id ORDER BY d.id SEPARATOR ','), '') AS request_division_ids_csv,
+			COALESCE(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), '-') AS request_division,
 			p.status_id,
 			ps.name AS status_name,
 			ps.color AS status_color,
@@ -31,6 +34,8 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 		FROM projects p
 		JOIN users u ON u.id = p.owner_id
 		JOIN project_statuses ps ON ps.id = p.status_id
+		LEFT JOIN project_divisions pd ON pd.project_id = p.id
+		LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
 		LEFT JOIN project_users pu ON pu.project_id = p.id
 		LEFT JOIN tickets t ON t.project_id = p.id AND t.deleted_at IS NULL
 		WHERE p.deleted_at IS NULL
@@ -47,8 +52,9 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 	var projects []models.Project
 	for rows.Next() {
 		var (
-			project   models.Project
-			createdAt time.Time
+			project               models.Project
+			createdAt             time.Time
+			requestDivisionIDsCSV string
 		)
 
 		if err := rows.Scan(
@@ -57,6 +63,8 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 			&project.Description,
 			&project.OwnerID,
 			&project.OwnerName,
+			&requestDivisionIDsCSV,
+			&project.RequestDivision,
 			&project.StatusID,
 			&project.StatusName,
 			&project.StatusColor,
@@ -70,6 +78,7 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 			return nil, err
 		}
 
+		project.RequestDivisionIDs = splitCSVToIntSlice(requestDivisionIDsCSV)
 		project.CreatedAt = createdAt.Format("2006-01-02 15:04:05")
 		project.CreatedAtDisplay = createdAt.Format("02 Jan 2006 15:04:05")
 		projects = append(projects, project)
@@ -122,20 +131,55 @@ func (r *ProjectRepository) ExistsByTicketPrefixExceptID(prefix string, id int) 
 }
 
 func (r *ProjectRepository) Create(params models.ProjectCreateInput) error {
-	_, err := r.DB.Exec(`
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	res, err := tx.Exec(`
 		INSERT INTO projects (name, description, owner_id, status_id, ticket_prefix, status_type, type, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
 	`, params.Name, params.Description, params.OwnerID, params.StatusID, params.TicketPrefix, params.StatusType, params.Type)
-	return err
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	projectID, err := res.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := r.replaceProjectDivisions(tx, int(projectID), params.DivisionIDs); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *ProjectRepository) Update(params models.ProjectUpdateInput) error {
-	_, err := r.DB.Exec(`
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`
 		UPDATE projects
 		SET name = ?, description = ?, owner_id = ?, status_id = ?, ticket_prefix = ?, status_type = ?, type = ?, updated_at = NOW()
 		WHERE id = ? AND deleted_at IS NULL
-	`, params.Name, params.Description, params.OwnerID, params.StatusID, params.TicketPrefix, params.StatusType, params.Type, params.ID)
-	return err
+	`, params.Name, params.Description, params.OwnerID, params.StatusID, params.TicketPrefix, params.StatusType, params.Type, params.ID); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := r.replaceProjectDivisions(tx, params.ID, params.DivisionIDs); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *ProjectRepository) Delete(id int) error {
@@ -165,4 +209,90 @@ func (r *ProjectRepository) GetStatusOptions() ([]models.ProjectStatusOption, er
 	}
 
 	return statuses, rows.Err()
+}
+
+func (r *ProjectRepository) GetDivisionOptions() ([]models.DivisionOption, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, name
+		FROM divisions
+		WHERE deleted_at IS NULL
+		ORDER BY name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var divisions []models.DivisionOption
+	for rows.Next() {
+		var division models.DivisionOption
+		if err := rows.Scan(&division.ID, &division.Name); err != nil {
+			return nil, err
+		}
+		divisions = append(divisions, division)
+	}
+
+	return divisions, rows.Err()
+}
+
+func (r *ProjectRepository) FindExistingDivisionIDs(ids []int64) (map[int64]bool, error) {
+	result := make(map[int64]bool)
+	if len(ids) == 0 {
+		return result, nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := `
+		SELECT id
+		FROM divisions
+		WHERE id IN (` + strings.Join(placeholders, ",") + `) AND deleted_at IS NULL
+	`
+	rows, err := r.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		result[id] = true
+	}
+
+	return result, rows.Err()
+}
+
+func (r *ProjectRepository) replaceProjectDivisions(tx *sql.Tx, projectID int, divisionIDs []int64) error {
+	if _, err := tx.Exec(`DELETE FROM project_divisions WHERE project_id = ?`, projectID); err != nil {
+		return err
+	}
+
+	if len(divisionIDs) == 0 {
+		return nil
+	}
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO project_divisions (project_id, division_id, created_at, updated_at)
+		VALUES (?, ?, NOW(), NOW())
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, divisionID := range divisionIDs {
+		if _, err := stmt.Exec(projectID, divisionID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

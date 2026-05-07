@@ -42,10 +42,17 @@ func ProjectStore(c *gin.Context) {
 		return
 	}
 
+	divisionIDs, err := parseIDList(c.PostFormArray("request_divisions"))
+	if err != nil {
+		renderProjectPage(c, projectSvc, models.Project{}, "divisi requester tidak valid")
+		return
+	}
+
 	input := models.ProjectCreateInput{
 		Name:         strings.TrimSpace(form.Name),
 		Description:  strings.TrimSpace(form.Description),
 		OwnerID:      form.OwnerID,
+		DivisionIDs:  divisionIDs,
 		StatusID:     form.StatusID,
 		TicketPrefix: strings.TrimSpace(form.TicketPrefix),
 		StatusType:   form.StatusType,
@@ -54,13 +61,14 @@ func ProjectStore(c *gin.Context) {
 
 	if err := projectSvc.CreateProject(input); err != nil {
 		renderProjectPage(c, projectSvc, models.Project{
-			Name:         input.Name,
-			Description:  input.Description,
-			OwnerID:      input.OwnerID,
-			StatusID:     input.StatusID,
-			TicketPrefix: input.TicketPrefix,
-			StatusType:   input.StatusType,
-			Type:         input.Type,
+			Name:               input.Name,
+			Description:        input.Description,
+			OwnerID:            input.OwnerID,
+			RequestDivisionIDs: ints64ToInts(input.DivisionIDs),
+			StatusID:           input.StatusID,
+			TicketPrefix:       input.TicketPrefix,
+			StatusType:         input.StatusType,
+			Type:               input.Type,
 		}, err.Error())
 		return
 	}
@@ -91,11 +99,18 @@ func ProjectUpdate(c *gin.Context) {
 		return
 	}
 
+	divisionIDs, err := parseIDList(c.PostFormArray("request_divisions"))
+	if err != nil {
+		renderProjectPage(c, projectSvc, models.Project{ID: form.ID}, "divisi requester tidak valid")
+		return
+	}
+
 	input := models.ProjectUpdateInput{
 		ID:           form.ID,
 		Name:         strings.TrimSpace(form.Name),
 		Description:  strings.TrimSpace(form.Description),
 		OwnerID:      form.OwnerID,
+		DivisionIDs:  divisionIDs,
 		StatusID:     form.StatusID,
 		TicketPrefix: strings.TrimSpace(form.TicketPrefix),
 		StatusType:   form.StatusType,
@@ -104,14 +119,15 @@ func ProjectUpdate(c *gin.Context) {
 
 	if err := projectSvc.UpdateProject(input); err != nil {
 		renderProjectPage(c, projectSvc, models.Project{
-			ID:           input.ID,
-			Name:         input.Name,
-			Description:  input.Description,
-			OwnerID:      input.OwnerID,
-			StatusID:     input.StatusID,
-			TicketPrefix: input.TicketPrefix,
-			StatusType:   input.StatusType,
-			Type:         input.Type,
+			ID:                 input.ID,
+			Name:               input.Name,
+			Description:        input.Description,
+			OwnerID:            input.OwnerID,
+			RequestDivisionIDs: ints64ToInts(input.DivisionIDs),
+			StatusID:           input.StatusID,
+			TicketPrefix:       input.TicketPrefix,
+			StatusType:         input.StatusType,
+			Type:               input.Type,
 		}, err.Error())
 		return
 	}
@@ -150,6 +166,11 @@ func renderProjectPage(c *gin.Context, projectService *services.ProjectService, 
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+	divisions, err := projectService.GetDivisionOptions()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	userRepo := &repositories.UserRepository{DB: config.DB}
 	users, err := userRepo.GetAll()
@@ -159,12 +180,24 @@ func renderProjectPage(c *gin.Context, projectService *services.ProjectService, 
 	}
 
 	Render(c, "project.html", gin.H{
-		"Title":    "Daftar Project",
-		"Page":     "project",
-		"projects": projects,
-		"statuses": statuses,
-		"users":    users,
-		"Old":      old,
-		"Error":    message,
+		"Title":     "Daftar Project",
+		"Page":      "project",
+		"projects":  projects,
+		"statuses":  statuses,
+		"users":     users,
+		"divisions": divisions,
+		"Old":       old,
+		"Error":     message,
 	})
+}
+
+func ints64ToInts(values []int64) []int {
+	result := make([]int, 0, len(values))
+	for _, value := range values {
+		if value <= 0 {
+			continue
+		}
+		result = append(result, int(value))
+	}
+	return result
 }
