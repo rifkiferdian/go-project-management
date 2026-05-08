@@ -140,6 +140,62 @@ func ProjectStatusDelete(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, "/project-statuses")
 }
 
+func ProjectPriorityIndex(c *gin.Context) {
+	svc := referentialService()
+	rows, err := svc.GetProjectPriorities()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	renderStatusPage(c, statusPageData{
+		Title:          "Project priorities",
+		Page:           "projectPriority",
+		EntityLabel:    "Project priority",
+		EntityPlural:   "Project priorities",
+		Rows:           rows,
+		CreateAction:   "/project-priorities",
+		UpdateAction:   "/project-priorities/update",
+		DeleteBasePath: "/project-priorities/delete/",
+	})
+}
+
+func ProjectPriorityStore(c *gin.Context) {
+	svc := referentialService()
+	if err := svc.CreateProjectPriority(c.PostForm("name"), c.PostForm("color"), checkboxOn(c, "is_default")); err != nil {
+		renderProjectPrioritiesWithError(c, err.Error())
+		return
+	}
+	c.Redirect(http.StatusSeeOther, "/project-priorities")
+}
+
+func ProjectPriorityUpdate(c *gin.Context) {
+	id, err := strconv.Atoi(c.PostForm("id"))
+	if err != nil {
+		renderProjectPrioritiesWithError(c, "project priority tidak valid")
+		return
+	}
+	svc := referentialService()
+	if err := svc.UpdateProjectPriority(id, c.PostForm("name"), c.PostForm("color"), checkboxOn(c, "is_default")); err != nil {
+		renderProjectPrioritiesWithError(c, err.Error())
+		return
+	}
+	c.Redirect(http.StatusSeeOther, "/project-priorities")
+}
+
+func ProjectPriorityDelete(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.String(http.StatusBadRequest, "invalid project priority id")
+		return
+	}
+	svc := referentialService()
+	if err := svc.DeleteProjectPriority(id); err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.Redirect(http.StatusSeeOther, "/project-priorities")
+}
+
 func TicketPriorityIndex(c *gin.Context) {
 	svc := referentialService()
 	rows, err := svc.GetTicketPriorities()
@@ -360,6 +416,26 @@ func renderTicketPrioritiesWithError(c *gin.Context, message string) {
 		CreateAction:   "/ticket-priorities",
 		UpdateAction:   "/ticket-priorities/update",
 		DeleteBasePath: "/ticket-priorities/delete/",
+	})
+}
+
+func renderProjectPrioritiesWithError(c *gin.Context, message string) {
+	svc := referentialService()
+	rows, err := svc.GetProjectPriorities()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	renderStatusPage(c, statusPageData{
+		Title:          "Project priorities",
+		Page:           "projectPriority",
+		EntityLabel:    "Project priority",
+		EntityPlural:   "Project priorities",
+		Rows:           rows,
+		Error:          message,
+		CreateAction:   "/project-priorities",
+		UpdateAction:   "/project-priorities/update",
+		DeleteBasePath: "/project-priorities/delete/",
 	})
 }
 

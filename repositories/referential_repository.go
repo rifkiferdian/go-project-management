@@ -100,6 +100,22 @@ func (r *ReferentialRepository) DeleteProjectStatus(id int) error {
 	return r.deleteStatusReference("project_statuses", id)
 }
 
+func (r *ReferentialRepository) GetProjectPriorities() ([]models.StatusReference, error) {
+	return r.getStatusReferences("project_priorities")
+}
+
+func (r *ReferentialRepository) CreateProjectPriority(name, color string, isDefault bool) error {
+	return r.createStatusReference("project_priorities", name, color, isDefault)
+}
+
+func (r *ReferentialRepository) UpdateProjectPriority(id int, name, color string, isDefault bool) error {
+	return r.updateStatusReference("project_priorities", id, name, color, isDefault)
+}
+
+func (r *ReferentialRepository) DeleteProjectPriority(id int) error {
+	return r.deleteStatusReference("project_priorities", id)
+}
+
 func (r *ReferentialRepository) GetTicketPriorities() ([]models.StatusReference, error) {
 	return r.getStatusReferences("ticket_priorities")
 }

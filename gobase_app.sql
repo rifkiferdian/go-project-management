@@ -249,7 +249,9 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (57, '2023_01_15_214849_add_epic_to_sprints', 1),
 (58, '2023_01_16_085329_add_started_ended_at_to_sprints', 1),
 (59, '2023_01_24_084637_update_users_for_oidc', 1),
-(60, '2023_04_10_123922_add_unique_ticket_prefix_to_projects_table', 1);
+(60, '2023_04_10_123922_add_unique_ticket_prefix_to_projects_table', 1),
+(61, '20260508_add_project_priorities', 1),
+(62, '20260508_add_project_priority_permissions', 1);
 
 -- --------------------------------------------------------
 
@@ -403,7 +405,12 @@ INSERT INTO `permissions` (`id`, `name`, `guard_name`, `created_at`, `updated_at
 (56, 'Manage general settings', 'web', '2026-04-12 21:56:57', '2026-04-12 21:56:57'),
 (57, 'Import from Jira', 'web', '2026-04-12 21:56:57', '2026-04-12 21:56:57'),
 (58, 'List timesheet data', 'web', '2026-04-12 21:56:57', '2026-04-12 21:56:57'),
-(59, 'View timesheet dashboard', 'web', '2026-04-12 21:56:57', '2026-04-12 21:56:57');
+(59, 'View timesheet dashboard', 'web', '2026-04-12 21:56:57', '2026-04-12 21:56:57'),
+(60, 'List project priorities', 'web', '2026-05-08 00:00:00', '2026-05-08 00:00:00'),
+(61, 'View project priority', 'web', '2026-05-08 00:00:00', '2026-05-08 00:00:00'),
+(62, 'Create project priority', 'web', '2026-05-08 00:00:00', '2026-05-08 00:00:00'),
+(63, 'Update project priority', 'web', '2026-05-08 00:00:00', '2026-05-08 00:00:00'),
+(64, 'Delete project priority', 'web', '2026-05-08 00:00:00', '2026-05-08 00:00:00');
 
 -- --------------------------------------------------------
 
@@ -436,6 +443,7 @@ CREATE TABLE `projects` (
   `description` longtext DEFAULT NULL,
   `owner_id` bigint(20) UNSIGNED NOT NULL,
   `status_id` bigint(20) UNSIGNED NOT NULL,
+  `priority_id` bigint(20) UNSIGNED DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -448,8 +456,8 @@ CREATE TABLE `projects` (
 -- Dumping data for table `projects`
 --
 
-INSERT INTO `projects` (`id`, `name`, `description`, `owner_id`, `status_id`, `deleted_at`, `created_at`, `updated_at`, `ticket_prefix`, `status_type`, `type`) VALUES
-(1, 'Customer Care Manna Kampus', '<p>Manajemen Pengaduan<br>Kelola, prioritaskan, dan lacak keluhan customer dengan mudah. Tetapkan prioritas dan SLA untuk memastikan setiap masalah ditangani tepat waktu.</p>', 1, 1, NULL, '2026-04-12 22:13:14', '2026-04-12 22:13:14', 'SE', 'default', 'kanban');
+INSERT INTO `projects` (`id`, `name`, `description`, `owner_id`, `status_id`, `priority_id`, `deleted_at`, `created_at`, `updated_at`, `ticket_prefix`, `status_type`, `type`) VALUES
+(1, 'Customer Care Manna Kampus', '<p>Manajemen Pengaduan<br>Kelola, prioritaskan, dan lacak keluhan customer dengan mudah. Tetapkan prioritas dan SLA untuk memastikan setiap masalah ditangani tepat waktu.</p>', 1, 1, 2, NULL, '2026-04-12 22:13:14', '2026-04-12 22:13:14', 'SE', 'default', 'kanban');
 
 -- --------------------------------------------------------
 
@@ -491,6 +499,31 @@ INSERT INTO `project_statuses` (`id`, `name`, `color`, `is_default`, `deleted_at
 (3, 'Testing', '#8b5cf6', 0, NULL, '2026-04-12 22:07:26', '2026-04-12 22:08:46'),
 (4, 'Implementation', '#f97316', 0, NULL, '2026-04-12 22:07:26', '2026-04-12 22:08:46'),
 (5, 'Done', '#22c55e', 0, NULL, '2026-04-12 22:07:26', '2026-04-12 22:08:46');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `project_priorities`
+--
+
+CREATE TABLE `project_priorities` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `color` varchar(255) NOT NULL DEFAULT '#cecece',
+  `is_default` tinyint(1) NOT NULL DEFAULT 0,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `project_priorities`
+--
+
+INSERT INTO `project_priorities` (`id`, `name`, `color`, `is_default`, `deleted_at`, `created_at`, `updated_at`) VALUES
+(1, 'Low', '#008000', 0, NULL, '2026-05-08 00:00:00', '2026-05-08 00:00:00'),
+(2, 'Normal', '#CECECE', 1, NULL, '2026-05-08 00:00:00', '2026-05-08 00:00:00'),
+(3, 'High', '#ff0000', 0, NULL, '2026-05-08 00:00:00', '2026-05-08 00:00:00');
 
 -- --------------------------------------------------------
 
@@ -609,7 +642,12 @@ INSERT INTO `role_has_permissions` (`permission_id`, `role_id`) VALUES
 (56, 1),
 (57, 1),
 (58, 1),
-(59, 1);
+(59, 1),
+(60, 1),
+(61, 1),
+(62, 1),
+(63, 1),
+(64, 1);
 
 -- --------------------------------------------------------
 
@@ -1067,7 +1105,8 @@ ALTER TABLE `projects`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `projects_ticket_prefix_unique` (`ticket_prefix`),
   ADD KEY `projects_owner_id_foreign` (`owner_id`),
-  ADD KEY `projects_status_id_foreign` (`status_id`);
+  ADD KEY `projects_status_id_foreign` (`status_id`),
+  ADD KEY `projects_priority_id_foreign` (`priority_id`);
 
 --
 -- Indexes for table `project_favorites`
@@ -1081,6 +1120,12 @@ ALTER TABLE `project_favorites`
 -- Indexes for table `project_statuses`
 --
 ALTER TABLE `project_statuses`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `project_priorities`
+--
+ALTER TABLE `project_priorities`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -1282,7 +1327,7 @@ ALTER TABLE `pending_user_emails`
 -- AUTO_INCREMENT for table `permissions`
 --
 ALTER TABLE `permissions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=65;
 
 --
 -- AUTO_INCREMENT for table `personal_access_tokens`
@@ -1307,6 +1352,12 @@ ALTER TABLE `project_favorites`
 --
 ALTER TABLE `project_statuses`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `project_priorities`
+--
+ALTER TABLE `project_priorities`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `project_users`
@@ -1438,6 +1489,7 @@ ALTER TABLE `model_has_roles`
 --
 ALTER TABLE `projects`
   ADD CONSTRAINT `projects_owner_id_foreign` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `projects_priority_id_foreign` FOREIGN KEY (`priority_id`) REFERENCES `project_priorities` (`id`),
   ADD CONSTRAINT `projects_status_id_foreign` FOREIGN KEY (`status_id`) REFERENCES `project_statuses` (`id`);
 
 --

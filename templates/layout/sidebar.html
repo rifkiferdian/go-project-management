@@ -90,7 +90,7 @@
                 {{ end }}
             </li>
             
-            {{ if or (index .Permissions "List activities") (index .Permissions "List project statuses") (index .Permissions "List ticket statuses") (index .Permissions "List ticket types") (index .Permissions "List ticket priorities") }}
+            {{ if or (index .Permissions "List activities") (index .Permissions "List project statuses") (index .Permissions "List project priorities") (index .Permissions "List ticket statuses") (index .Permissions "List ticket types") (index .Permissions "List ticket priorities") }}
             <li class="pt-2">
                 <div class="px-3 py-3 text-[14px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:px-4">
                     Referential
@@ -133,6 +133,15 @@
                         <a href="{{ baseURL "/ticket-priorities" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "ticketPriority" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "ticketPriority" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
                             <i class="bx bx-shield-quarter text-lg"></i>
                             <span>Ticket priorities</span>
+                        </a>
+                    </li>
+                    {{ end }}
+
+                    {{ if index .Permissions "List project priorities" }}
+                    <li>
+                        <a href="{{ baseURL "/project-priorities" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "projectPriority" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "projectPriority" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-shield-quarter text-lg"></i>
+                            <span>Project priorities</span>
                         </a>
                     </li>
                     {{ end }}

@@ -73,6 +73,36 @@ func (s *ReferentialService) DeleteProjectStatus(id int) error {
 	return s.Repo.DeleteProjectStatus(id)
 }
 
+func (s *ReferentialService) GetProjectPriorities() ([]models.StatusReference, error) {
+	return s.Repo.GetProjectPriorities()
+}
+
+func (s *ReferentialService) CreateProjectPriority(name, color string, isDefault bool) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("nama wajib diisi")
+	}
+	return s.Repo.CreateProjectPriority(name, defaultColor(color), isDefault)
+}
+
+func (s *ReferentialService) UpdateProjectPriority(id int, name, color string, isDefault bool) error {
+	if id <= 0 {
+		return errors.New("project priority tidak valid")
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("nama wajib diisi")
+	}
+	return s.Repo.UpdateProjectPriority(id, name, defaultColor(color), isDefault)
+}
+
+func (s *ReferentialService) DeleteProjectPriority(id int) error {
+	if id <= 0 {
+		return errors.New("project priority tidak valid")
+	}
+	return s.Repo.DeleteProjectPriority(id)
+}
+
 func (s *ReferentialService) GetTicketPriorities() ([]models.StatusReference, error) {
 	return s.Repo.GetTicketPriorities()
 }
