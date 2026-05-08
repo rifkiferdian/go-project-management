@@ -39,6 +39,9 @@ func Connect() {
 	if err := ensureTicketAttachmentsTable(DB); err != nil {
 		panic(err)
 	}
+	if err := ensureTicketTodosTable(DB); err != nil {
+		panic(err)
+	}
 
 	fmt.Println("Database connected successfully")
 }
@@ -92,6 +95,33 @@ func ensureTicketAttachmentsTable(db *sql.DB) error {
 			PRIMARY KEY (id),
 			KEY ticket_attachments_ticket_id_index (ticket_id),
 			KEY ticket_attachments_user_id_index (user_id)
+		)
+	`)
+	return err
+}
+
+func ensureTicketTodosTable(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS ticket_todos (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			ticket_id BIGINT UNSIGNED NOT NULL,
+			content VARCHAR(500) NOT NULL,
+			is_done TINYINT(1) NOT NULL DEFAULT 0,
+			` + "`order`" + ` INT(11) NOT NULL DEFAULT 1,
+			done_at DATETIME NULL,
+			created_by BIGINT UNSIGNED NULL,
+			updated_by BIGINT UNSIGNED NULL,
+			deleted_at TIMESTAMP NULL DEFAULT NULL,
+			created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			KEY ticket_todos_ticket_id_foreign (ticket_id),
+			KEY ticket_todos_created_by_foreign (created_by),
+			KEY ticket_todos_updated_by_foreign (updated_by),
+			KEY ticket_todos_ticket_done_order_index (ticket_id, is_done, ` + "`order`" + `),
+			CONSTRAINT ticket_todos_ticket_id_foreign FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE,
+			CONSTRAINT ticket_todos_created_by_foreign FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL,
+			CONSTRAINT ticket_todos_updated_by_foreign FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL
 		)
 	`)
 	return err

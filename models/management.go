@@ -16,6 +16,8 @@ type TicketListItem struct {
 	ResponsibleName  string
 	Estimation       float64
 	EstimationText   string
+	TodoProgress     int
+	TodoProgressText string
 	StartsAtDisplay  string
 	EndsAtDisplay    string
 	UpdatedAtDisplay string
@@ -25,6 +27,7 @@ type TicketListItem struct {
 type TicketDetailPage struct {
 	Ticket      TicketDetail
 	Comments    []TicketCommentItem
+	Todos       []TicketTodoItem
 	Activities  []TicketActivityItem
 	Hours       []TicketHourItem
 	Subscribers []TicketSubscriberItem
@@ -83,6 +86,10 @@ type TicketDetail struct {
 	LoggedHours         float64
 	LoggedHoursText     string
 	LoggedPercent       int
+	TodoTotal           int
+	TodoDone            int
+	TodoProgressPercent int
+	TodoProgressLabel   string
 	SubscribersCount    int
 	StartsAtDisplay     string
 	EndsAtDisplay       string
@@ -101,6 +108,20 @@ type TicketCommentItem struct {
 	Content           string
 	CreatedAtDisplay  string
 	CreatedAtRelative string
+}
+
+// TicketTodoItem merepresentasikan todo list pada ticket.
+type TicketTodoItem struct {
+	ID                int
+	Content           string
+	IsDone            bool
+	Order             int
+	CreatedByName     string
+	UpdatedByName     string
+	CreatedAtDisplay  string
+	CreatedAtRelative string
+	UpdatedAtDisplay  string
+	UpdatedAtRelative string
 }
 
 // TicketActivityItem merepresentasikan riwayat perpindahan status ticket.
@@ -213,17 +234,19 @@ type BoardColumn struct {
 
 // BoardTicket merepresentasikan kartu ticket pada board.
 type BoardTicket struct {
-	ID              int
-	Code            string
-	Name            string
-	ProjectName     string
-	PriorityName    string
-	PriorityColor   string
-	TypeName        string
-	TypeColor       string
-	ResponsibleName string
-	EstimationText  string
-	StatusID        int
+	ID               int
+	Code             string
+	Name             string
+	ProjectName      string
+	PriorityName     string
+	PriorityColor    string
+	TypeName         string
+	TypeColor        string
+	ResponsibleName  string
+	EstimationText   string
+	TodoProgress     int
+	TodoProgressText string
+	StatusID         int
 }
 
 // RoadmapEpic merepresentasikan ringkasan epic untuk halaman roadmap.

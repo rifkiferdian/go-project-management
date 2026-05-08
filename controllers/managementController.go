@@ -84,6 +84,7 @@ func TicketShow(c *gin.Context) {
 		"Page":          "ticket",
 		"Ticket":        pageData.Ticket,
 		"Comments":      pageData.Comments,
+		"Todos":         pageData.Todos,
 		"Activities":    pageData.Activities,
 		"Hours":         pageData.Hours,
 		"Subscribers":   pageData.Subscribers,
@@ -191,6 +192,64 @@ func TicketCommentUpdate(c *gin.Context) {
 	}
 
 	if err := managementService().UpdateTicketComment(ticketID, commentID, currentSessionUserID(c), c.PostForm("content")); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+}
+
+func TicketTodoStore(c *gin.Context) {
+	ticketID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || ticketID <= 0 {
+		c.String(http.StatusBadRequest, "ticket tidak valid")
+		return
+	}
+
+	if err := managementService().CreateTicketTodo(ticketID, currentSessionUserID(c), c.PostForm("content")); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+}
+
+func TicketTodoUpdate(c *gin.Context) {
+	ticketID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || ticketID <= 0 {
+		c.String(http.StatusBadRequest, "ticket tidak valid")
+		return
+	}
+
+	todoID, err := strconv.Atoi(c.Param("todoId"))
+	if err != nil || todoID <= 0 {
+		c.String(http.StatusBadRequest, "todo tidak valid")
+		return
+	}
+
+	isDone := strings.TrimSpace(c.PostForm("is_done")) != ""
+	if err := managementService().UpdateTicketTodo(ticketID, todoID, currentSessionUserID(c), c.PostForm("content"), isDone); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+}
+
+func TicketTodoDelete(c *gin.Context) {
+	ticketID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || ticketID <= 0 {
+		c.String(http.StatusBadRequest, "ticket tidak valid")
+		return
+	}
+
+	todoID, err := strconv.Atoi(c.Param("todoId"))
+	if err != nil || todoID <= 0 {
+		c.String(http.StatusBadRequest, "todo tidak valid")
+		return
+	}
+
+	if err := managementService().DeleteTicketTodo(ticketID, todoID, currentSessionUserID(c)); err != nil {
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}

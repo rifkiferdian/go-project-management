@@ -26,24 +26,12 @@
                                     Back to Tickets
                                 </a>
                                 <div class="flex flex-wrap items-center justify-end gap-2">
-                                    <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #16a34a;">
-                                        <i class="bx bx-bell text-base"></i>
-                                        Subscribe
-                                    </button>
-                                    <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                        <i class="bx bx-share-alt text-base"></i>
-                                        Share
-                                    </button>
                                     {{ if index .Permissions "Update ticket" }}
                                     <a href="/tickets/{{ .Ticket.ID }}/edit" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #2563eb;">
                                         <i class="bx bx-edit-alt text-base"></i>
                                         Edit
                                     </a>
                                     {{ end }}
-                                    <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #d97706;">
-                                        <i class="bx bx-time text-base"></i>
-                                        Log time
-                                    </button>
                                     <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
                                         <i class="bx bx-dots-vertical-rounded text-lg"></i>
                                     </button>
@@ -67,6 +55,10 @@
                                     <span class="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-white" style="background-color: {{ .Ticket.TypeColor }};">
                                         <i class="bx bx-purchase-tag-alt text-[11px]"></i>
                                         {{ .Ticket.TypeName }}
+                                    </span>
+                                    <span class="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-slate-700" style="background-color: #eff6ff; border: 1px solid #bfdbfe;">
+                                        <i class="bx bx-task text-[11px] text-blue-600"></i>
+                                        Todo {{ .Ticket.TodoProgressLabel }}
                                     </span>
                                 </div>
                             </div>
@@ -158,6 +150,73 @@
                                             {{ end }}
                                         </div>
                                         {{ end }}
+                                    </div>
+                                    <div class="w-full rounded-2xl border border-slate-200 bg-white p-4" style="max-width: 420px;">
+                                        <div class="mb-3 flex items-center justify-between gap-3">
+                                            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Todo</div>
+                                            <i class="bx bx-list-check text-lg text-slate-400"></i>
+                                        </div>
+
+                                        {{ if index .Permissions "Update ticket" }}
+                                        <form method="post" action="/tickets/{{ .Ticket.ID }}/todos" class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                            <textarea
+                                                name="content"
+                                                rows="2"
+                                                class="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#f26419] focus:ring-2 focus:ring-[#f26419]/10"
+                                                placeholder="Tambah todo..."
+                                                required></textarea>
+                                            <div class="mt-2 flex justify-end">
+                                                <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-[#f26419] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#dc5a15]">
+                                                    <i class="bx bx-plus text-sm"></i>
+                                                    Add
+                                                </button>
+                                            </div>
+                                        </form>
+                                        {{ end }}
+
+                                        <div class="mt-3 space-y-2 pr-1" style="max-height: 420px; overflow-y: auto;">
+                                            {{ range .Todos }}
+                                            <article class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                                <div class="flex items-start gap-2">
+                                                    <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border" style="{{ if .IsDone }}border-color:#10b981;background-color:#10b981;color:#ffffff;{{ else }}border-color:#cbd5e1;background-color:#f1f5f9;color:#94a3b8;{{ end }}">
+                                                        <i class="bx bx-check text-sm"></i>
+                                                    </span>
+                                                    <div class="min-w-0 flex-1">
+                                                        <p class="text-sm {{ if .IsDone }}text-slate-400 line-through{{ else }}text-slate-800{{ end }}" data-todo-display>{{ .Content }}</p>
+                                                        <p class="mt-1 text-[11px] text-slate-400">Update {{ .UpdatedAtRelative }}</p>
+                                                        {{ if index $.Permissions "Update ticket" }}
+                                                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                                                            <button type="button" class="text-[11px] font-semibold text-slate-500 transition hover:text-[#f26419]" data-todo-edit-toggle>
+                                                                Edit
+                                                            </button>
+                                                            <form method="post" action="/tickets/{{ $.Ticket.ID }}/todos/{{ .ID }}/delete" onsubmit="return confirm('Hapus todo ini?');">
+                                                                <button type="submit" class="text-[11px] font-semibold text-rose-600 transition hover:text-rose-700">
+                                                                    Hapus
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                        <form method="post" action="/tickets/{{ $.Ticket.ID }}/todos/{{ .ID }}/update" class="mt-2 hidden rounded-lg border border-slate-200 bg-white p-2" data-todo-edit-form>
+                                                            <textarea name="content" rows="2" class="w-full resize-none rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm leading-6 text-slate-700 outline-none transition focus:border-[#f26419] focus:ring-2 focus:ring-[#f26419]/10" required>{{ .Content }}</textarea>
+                                                            <label class="mt-2 inline-flex items-center gap-2 text-xs font-medium text-slate-600">
+                                                                <input type="checkbox" name="is_done" value="1" class="h-4 w-4 rounded border-slate-300" {{ if .IsDone }}checked{{ end }}>
+                                                                Tandai selesai
+                                                            </label>
+                                                            <div class="mt-2 flex justify-end gap-2">
+                                                                <button type="button" class="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 transition hover:bg-slate-50" data-todo-edit-cancel>Batal</button>
+                                                                <button type="submit" class="rounded-md bg-[#f26419] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#dc5a15]">Simpan</button>
+                                                            </div>
+                                                        </form>
+                                                        {{ end }}
+                                                    </div>
+                                                </div>
+                                            </article>
+                                            {{ else }}
+                                            <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-center">
+                                                <p class="text-sm font-medium text-slate-600">Belum ada todo</p>
+                                                <p class="mt-1 text-xs text-slate-400">Tambah checklist kecil untuk ticket ini.</p>
+                                            </div>
+                                            {{ end }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -351,6 +410,8 @@
                 var contentModalCloses = document.querySelectorAll('[data-content-modal-close]');
                 var commentEditToggles = document.querySelectorAll('[data-comment-edit-toggle]');
                 var commentEditCancels = document.querySelectorAll('[data-comment-edit-cancel]');
+                var todoEditToggles = document.querySelectorAll('[data-todo-edit-toggle]');
+                var todoEditCancels = document.querySelectorAll('[data-todo-edit-cancel]');
 
                 function closeSidebar() {
                     if (!sidebar) return;
@@ -445,9 +506,36 @@
                     });
                 });
 
+                todoEditToggles.forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        var container = button.closest('.min-w-0');
+                        if (!container) return;
+                        var display = container.querySelector('[data-todo-display]');
+                        var form = container.querySelector('[data-todo-edit-form]');
+                        if (!display || !form) return;
+                        display.classList.add('hidden');
+                        form.classList.remove('hidden');
+                        button.classList.add('hidden');
+                    });
+                });
+
+                todoEditCancels.forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        var form = button.closest('[data-todo-edit-form]');
+                        if (!form) return;
+                        var container = form.closest('.min-w-0');
+                        var display = container ? container.querySelector('[data-todo-display]') : null;
+                        var toggle = container ? container.querySelector('[data-todo-edit-toggle]') : null;
+                        form.classList.add('hidden');
+                        if (display) display.classList.remove('hidden');
+                        if (toggle) toggle.classList.remove('hidden');
+                    });
+                });
+
                 if (overlay) overlay.addEventListener('click', closeSidebar);
                 activateTab('comments');
             });
         </script>
     </body>
 </html>
+

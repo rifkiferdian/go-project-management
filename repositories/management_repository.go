@@ -35,6 +35,19 @@ func (r *ManagementRepository) GetTickets(projectID int) ([]models.TicketListIte
 			owner.name AS owner_name,
 			COALESCE(responsible.name, '-') AS responsible_name,
 			COALESCE(t.estimation, 0) AS estimation,
+			COALESCE((
+				SELECT COUNT(1)
+				FROM ticket_todos td
+				WHERE td.ticket_id = t.id
+					AND td.deleted_at IS NULL
+			), 0) AS todo_total,
+			COALESCE((
+				SELECT COUNT(1)
+				FROM ticket_todos td
+				WHERE td.ticket_id = t.id
+					AND td.deleted_at IS NULL
+					AND td.is_done = 1
+			), 0) AS todo_done,
 			t.starts_at,
 			t.ends_at,
 			t.updated_at
@@ -60,6 +73,8 @@ func (r *ManagementRepository) GetTickets(projectID int) ([]models.TicketListIte
 			item        models.TicketListItem
 			startsAtRaw sql.NullTime
 			endsAtRaw   sql.NullTime
+			todoTotal   int
+			todoDone    int
 			updatedAt   time.Time
 		)
 		if err := rows.Scan(
@@ -76,6 +91,8 @@ func (r *ManagementRepository) GetTickets(projectID int) ([]models.TicketListIte
 			&item.OwnerName,
 			&item.ResponsibleName,
 			&item.Estimation,
+			&todoTotal,
+			&todoDone,
 			&startsAtRaw,
 			&endsAtRaw,
 			&updatedAt,
@@ -83,6 +100,8 @@ func (r *ManagementRepository) GetTickets(projectID int) ([]models.TicketListIte
 			return nil, err
 		}
 		item.EstimationText = formatHours(item.Estimation)
+		item.TodoProgress = todoProgressPercent(todoDone, todoTotal)
+		item.TodoProgressText = fmt.Sprintf("%d%%", item.TodoProgress)
 		item.StartsAtDisplay = formatOptionalDate(startsAtRaw)
 		item.EndsAtDisplay = formatOptionalDate(endsAtRaw)
 		item.UpdatedAtDisplay = updatedAt.Format("02 Jan 2006 15:04")
@@ -99,6 +118,11 @@ func (r *ManagementRepository) GetTicketDetailPage(id int) (models.TicketDetailP
 	}
 
 	comments, err := r.GetTicketComments(id)
+	if err != nil {
+		return models.TicketDetailPage{}, err
+	}
+
+	todos, err := r.GetTicketTodos(id)
 	if err != nil {
 		return models.TicketDetailPage{}, err
 	}
@@ -126,6 +150,7 @@ func (r *ManagementRepository) GetTicketDetailPage(id int) (models.TicketDetailP
 	return models.TicketDetailPage{
 		Ticket:      detail,
 		Comments:    comments,
+		Todos:       todos,
 		Activities:  activities,
 		Hours:       hours,
 		Subscribers: subscribers,
@@ -282,6 +307,19 @@ func (r *ManagementRepository) GetTicketDetail(id int) (models.TicketDetail, err
 				FROM ticket_subscribers sub
 				WHERE sub.ticket_id = t.id
 			), 0) AS subscribers_count,
+			COALESCE((
+				SELECT COUNT(1)
+				FROM ticket_todos td
+				WHERE td.ticket_id = t.id
+					AND td.deleted_at IS NULL
+			), 0) AS todo_total,
+			COALESCE((
+				SELECT COUNT(1)
+				FROM ticket_todos td
+				WHERE td.ticket_id = t.id
+					AND td.deleted_at IS NULL
+					AND td.is_done = 1
+			), 0) AS todo_done,
 			t.starts_at,
 			t.ends_at,
 			t.created_at,
@@ -313,6 +351,8 @@ func (r *ManagementRepository) GetTicketDetail(id int) (models.TicketDetail, err
 		&item.Estimation,
 		&item.LoggedHours,
 		&item.SubscribersCount,
+		&item.TodoTotal,
+		&item.TodoDone,
 		&startsAtRaw,
 		&endsAtRaw,
 		&createdAtRaw,
@@ -328,6 +368,8 @@ func (r *ManagementRepository) GetTicketDetail(id int) (models.TicketDetail, err
 	item.EstimationText = formatHoursLabel(item.Estimation)
 	item.LoggedHoursText = formatHoursLabel(item.LoggedHours)
 	item.LoggedPercent = percentFromHours(item.LoggedHours, item.Estimation)
+	item.TodoProgressPercent = todoProgressPercent(item.TodoDone, item.TodoTotal)
+	item.TodoProgressLabel = fmt.Sprintf("%d%% (%d/%d selesai)", item.TodoProgressPercent, item.TodoDone, item.TodoTotal)
 	item.StartsAtDisplay = formatOptionalDate(startsAtRaw)
 	item.EndsAtDisplay = formatOptionalDate(endsAtRaw)
 	item.CreatedAtDisplay = formatTimestamp(createdAtRaw)
@@ -652,6 +694,146 @@ func (r *ManagementRepository) UpdateTicketComment(ticketID, commentID, userID i
 		SET content = ?, updated_at = NOW()
 		WHERE id = ? AND ticket_id = ? AND user_id = ? AND deleted_at IS NULL
 	`, content, commentID, ticketID, userID)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected <= 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *ManagementRepository) GetTicketTodos(ticketID int) ([]models.TicketTodoItem, error) {
+	rows, err := r.DB.Query(`
+		SELECT
+			td.id,
+			td.content,
+			td.is_done,
+			td.`+"`order`"+`,
+			COALESCE(creator.name, '-') AS created_by_name,
+			COALESCE(updater.name, '-') AS updated_by_name,
+			td.created_at,
+			td.updated_at
+		FROM ticket_todos td
+		LEFT JOIN users creator ON creator.id = td.created_by
+		LEFT JOIN users updater ON updater.id = td.updated_by
+		WHERE td.ticket_id = ? AND td.deleted_at IS NULL
+		ORDER BY td.is_done ASC, td.`+"`order`"+` ASC, td.id ASC
+	`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.TicketTodoItem
+	for rows.Next() {
+		var (
+			item         models.TicketTodoItem
+			createdAtRaw sql.NullTime
+			updatedAtRaw sql.NullTime
+		)
+		if err := rows.Scan(
+			&item.ID,
+			&item.Content,
+			&item.IsDone,
+			&item.Order,
+			&item.CreatedByName,
+			&item.UpdatedByName,
+			&createdAtRaw,
+			&updatedAtRaw,
+		); err != nil {
+			return nil, err
+		}
+		item.CreatedAtDisplay = formatTimestamp(createdAtRaw)
+		item.CreatedAtRelative = relativeTime(createdAtRaw)
+		item.UpdatedAtDisplay = formatTimestamp(updatedAtRaw)
+		item.UpdatedAtRelative = relativeTime(updatedAtRaw)
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+func (r *ManagementRepository) CreateTicketTodo(ticketID, userID int, content string) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	if err := ensureExists(tx, `SELECT COUNT(1) FROM tickets WHERE id = ? AND deleted_at IS NULL`, ticketID); err != nil {
+		tx.Rollback()
+		return sql.ErrNoRows
+	}
+	if err := ensureExists(tx, `SELECT COUNT(1) FROM users WHERE id = ? AND deleted_at IS NULL`, userID); err != nil {
+		tx.Rollback()
+		return errors.New("user tidak valid")
+	}
+
+	var nextOrder int
+	if err := tx.QueryRow(`
+		SELECT COALESCE(MAX(`+"`order`"+`), 0) + 1
+		FROM ticket_todos
+		WHERE ticket_id = ? AND deleted_at IS NULL
+	`, ticketID).Scan(&nextOrder); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if _, err := tx.Exec(`
+		INSERT INTO ticket_todos (ticket_id, content, is_done, `+"`order`"+`, created_by, updated_by, created_at, updated_at)
+		VALUES (?, ?, 0, ?, ?, ?, NOW(), NOW())
+	`, ticketID, content, nextOrder, userID, userID); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (r *ManagementRepository) UpdateTicketTodo(ticketID, todoID, userID int, content string, isDone bool) error {
+	doneFlag := 0
+	if isDone {
+		doneFlag = 1
+	}
+
+	result, err := r.DB.Exec(`
+		UPDATE ticket_todos
+		SET
+			content = ?,
+			is_done = ?,
+			done_at = CASE
+				WHEN ? = 1 THEN COALESCE(done_at, NOW())
+				ELSE NULL
+			END,
+			updated_by = ?,
+			updated_at = NOW()
+		WHERE id = ? AND ticket_id = ? AND deleted_at IS NULL
+	`, content, doneFlag, doneFlag, nullableInt(userID), todoID, ticketID)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected <= 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *ManagementRepository) DeleteTicketTodo(ticketID, todoID, userID int) error {
+	result, err := r.DB.Exec(`
+		UPDATE ticket_todos
+		SET deleted_at = NOW(), updated_by = ?, updated_at = NOW()
+		WHERE id = ? AND ticket_id = ? AND deleted_at IS NULL
+	`, nullableInt(userID), todoID, ticketID)
 	if err != nil {
 		return err
 	}
@@ -1190,6 +1372,19 @@ func (r *ManagementRepository) getBoardTickets(projectID int) ([]models.BoardTic
 			COALESCE(tt.color, '#cecece') AS type_color,
 			COALESCE(responsible.name, '-') AS responsible_name,
 			COALESCE(t.estimation, 0) AS estimation,
+			COALESCE((
+				SELECT COUNT(1)
+				FROM ticket_todos td
+				WHERE td.ticket_id = t.id
+					AND td.deleted_at IS NULL
+			), 0) AS todo_total,
+			COALESCE((
+				SELECT COUNT(1)
+				FROM ticket_todos td
+				WHERE td.ticket_id = t.id
+					AND td.deleted_at IS NULL
+					AND td.is_done = 1
+			), 0) AS todo_done,
 			t.status_id
 		FROM tickets t
 		JOIN projects p ON p.id = t.project_id
@@ -1210,6 +1405,8 @@ func (r *ManagementRepository) getBoardTickets(projectID int) ([]models.BoardTic
 		var (
 			item       models.BoardTicket
 			estimation float64
+			todoTotal  int
+			todoDone   int
 		)
 		if err := rows.Scan(
 			&item.ID,
@@ -1222,11 +1419,15 @@ func (r *ManagementRepository) getBoardTickets(projectID int) ([]models.BoardTic
 			&item.TypeColor,
 			&item.ResponsibleName,
 			&estimation,
+			&todoTotal,
+			&todoDone,
 			&item.StatusID,
 		); err != nil {
 			return nil, err
 		}
 		item.EstimationText = formatHours(estimation)
+		item.TodoProgress = todoProgressPercent(todoDone, todoTotal)
+		item.TodoProgressText = fmt.Sprintf("%d%%", item.TodoProgress)
 		items = append(items, item)
 	}
 
@@ -1405,6 +1606,19 @@ func percentFromHours(total, estimation float64) int {
 		return 0
 	}
 	return value
+}
+
+func todoProgressPercent(done, total int) int {
+	if total <= 0 {
+		return 100
+	}
+	if done <= 0 {
+		return 0
+	}
+	if done >= total {
+		return 100
+	}
+	return (done * 100) / total
 }
 
 func plainTextFromHTML(value string) string {

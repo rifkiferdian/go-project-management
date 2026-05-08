@@ -131,6 +131,68 @@ func (s *ManagementService) UpdateTicketComment(ticketID, commentID, userID int,
 	return nil
 }
 
+func (s *ManagementService) CreateTicketTodo(ticketID, userID int, content string) error {
+	content = strings.TrimSpace(content)
+	if ticketID <= 0 {
+		return errors.New("ticket tidak valid")
+	}
+	if userID <= 0 {
+		return errors.New("user tidak valid")
+	}
+	if content == "" {
+		return errors.New("todo wajib diisi")
+	}
+
+	if err := s.Repo.CreateTicketTodo(ticketID, userID, content); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("ticket tidak ditemukan")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (s *ManagementService) UpdateTicketTodo(ticketID, todoID, userID int, content string, isDone bool) error {
+	content = strings.TrimSpace(content)
+	if ticketID <= 0 || todoID <= 0 {
+		return errors.New("todo tidak valid")
+	}
+	if userID <= 0 {
+		return errors.New("user tidak valid")
+	}
+	if content == "" {
+		return errors.New("todo wajib diisi")
+	}
+
+	if err := s.Repo.UpdateTicketTodo(ticketID, todoID, userID, content, isDone); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("todo tidak ditemukan")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (s *ManagementService) DeleteTicketTodo(ticketID, todoID, userID int) error {
+	if ticketID <= 0 || todoID <= 0 {
+		return errors.New("todo tidak valid")
+	}
+	if userID <= 0 {
+		return errors.New("user tidak valid")
+	}
+
+	if err := s.Repo.DeleteTicketTodo(ticketID, todoID, userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("todo tidak ditemukan")
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (s *ManagementService) UpdateTicket(input models.TicketUpdateInput, actorUserID int) (models.TicketUpdateInput, error) {
 	input.Name = strings.TrimSpace(input.Name)
 	input.Content = strings.TrimSpace(input.Content)
