@@ -12,6 +12,9 @@ type Project struct {
 	StatusID           int
 	StatusName         string
 	StatusColor        string
+	PriorityID         int
+	PriorityName       string
+	PriorityColor      string
 	TicketPrefix       string
 	StatusType         string
 	Type               string
@@ -28,6 +31,7 @@ type ProjectCreateInput struct {
 	OwnerID      int
 	DivisionIDs  []int64
 	StatusID     int
+	PriorityID   int
 	TicketPrefix string
 	StatusType   string
 	Type         string
@@ -41,6 +45,7 @@ type ProjectUpdateInput struct {
 	OwnerID      int
 	DivisionIDs  []int64
 	StatusID     int
+	PriorityID   int
 	TicketPrefix string
 	StatusType   string
 	Type         string
@@ -48,6 +53,13 @@ type ProjectUpdateInput struct {
 
 // ProjectStatusOption dipakai untuk opsi select status.
 type ProjectStatusOption struct {
+	ID    int
+	Name  string
+	Color string
+}
+
+// ProjectPriorityOption dipakai untuk opsi select prioritas.
+type ProjectPriorityOption struct {
 	ID    int
 	Name  string
 	Color string

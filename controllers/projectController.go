@@ -26,6 +26,7 @@ func ProjectStore(c *gin.Context) {
 		Description  string `form:"description"`
 		OwnerID      int    `form:"owner_id" binding:"required"`
 		StatusID     int    `form:"status_id" binding:"required"`
+		PriorityID   int    `form:"priority_id" binding:"required"`
 		TicketPrefix string `form:"ticket_prefix" binding:"required"`
 		StatusType   string `form:"status_type"`
 		Type         string `form:"type"`
@@ -54,6 +55,7 @@ func ProjectStore(c *gin.Context) {
 		OwnerID:      form.OwnerID,
 		DivisionIDs:  divisionIDs,
 		StatusID:     form.StatusID,
+		PriorityID:   form.PriorityID,
 		TicketPrefix: strings.TrimSpace(form.TicketPrefix),
 		StatusType:   form.StatusType,
 		Type:         form.Type,
@@ -66,6 +68,7 @@ func ProjectStore(c *gin.Context) {
 			OwnerID:            input.OwnerID,
 			RequestDivisionIDs: ints64ToInts(input.DivisionIDs),
 			StatusID:           input.StatusID,
+			PriorityID:         input.PriorityID,
 			TicketPrefix:       input.TicketPrefix,
 			StatusType:         input.StatusType,
 			Type:               input.Type,
@@ -83,6 +86,7 @@ func ProjectUpdate(c *gin.Context) {
 		Description  string `form:"description"`
 		OwnerID      int    `form:"owner_id" binding:"required"`
 		StatusID     int    `form:"status_id" binding:"required"`
+		PriorityID   int    `form:"priority_id" binding:"required"`
 		TicketPrefix string `form:"ticket_prefix" binding:"required"`
 		StatusType   string `form:"status_type"`
 		Type         string `form:"type"`
@@ -112,6 +116,7 @@ func ProjectUpdate(c *gin.Context) {
 		OwnerID:      form.OwnerID,
 		DivisionIDs:  divisionIDs,
 		StatusID:     form.StatusID,
+		PriorityID:   form.PriorityID,
 		TicketPrefix: strings.TrimSpace(form.TicketPrefix),
 		StatusType:   form.StatusType,
 		Type:         form.Type,
@@ -125,6 +130,7 @@ func ProjectUpdate(c *gin.Context) {
 			OwnerID:            input.OwnerID,
 			RequestDivisionIDs: ints64ToInts(input.DivisionIDs),
 			StatusID:           input.StatusID,
+			PriorityID:         input.PriorityID,
 			TicketPrefix:       input.TicketPrefix,
 			StatusType:         input.StatusType,
 			Type:               input.Type,
@@ -171,6 +177,11 @@ func renderProjectPage(c *gin.Context, projectService *services.ProjectService, 
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+	priorities, err := projectService.GetPriorityOptions()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	userRepo := &repositories.UserRepository{DB: config.DB}
 	users, err := userRepo.GetAll()
@@ -180,14 +191,15 @@ func renderProjectPage(c *gin.Context, projectService *services.ProjectService, 
 	}
 
 	Render(c, "project.html", gin.H{
-		"Title":     "Daftar Project",
-		"Page":      "project",
-		"projects":  projects,
-		"statuses":  statuses,
-		"users":     users,
-		"divisions": divisions,
-		"Old":       old,
-		"Error":     message,
+		"Title":      "Daftar Project",
+		"Page":       "project",
+		"projects":   projects,
+		"statuses":   statuses,
+		"users":      users,
+		"divisions":  divisions,
+		"priorities": priorities,
+		"Old":        old,
+		"Error":      message,
 	})
 }
 

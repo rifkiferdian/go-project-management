@@ -25,6 +25,9 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 			p.status_id,
 			ps.name AS status_name,
 			ps.color AS status_color,
+			COALESCE(p.priority_id, 0) AS priority_id,
+			COALESCE(pp.name, '-') AS priority_name,
+			COALESCE(pp.color, '#cecece') AS priority_color,
 			p.ticket_prefix,
 			p.status_type,
 			p.type,
@@ -34,13 +37,14 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 		FROM projects p
 		JOIN users u ON u.id = p.owner_id
 		JOIN project_statuses ps ON ps.id = p.status_id
+		LEFT JOIN project_priorities pp ON pp.id = p.priority_id AND pp.deleted_at IS NULL
 		LEFT JOIN project_divisions pd ON pd.project_id = p.id
 		LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
 		LEFT JOIN project_users pu ON pu.project_id = p.id
 		LEFT JOIN tickets t ON t.project_id = p.id AND t.deleted_at IS NULL
 		WHERE p.deleted_at IS NULL
 		GROUP BY
-			p.id, p.name, p.description, p.owner_id, u.name, p.status_id, ps.name, ps.color,
+			p.id, p.name, p.description, p.owner_id, u.name, p.status_id, ps.name, ps.color, p.priority_id, pp.name, pp.color,
 			p.ticket_prefix, p.status_type, p.type, p.created_at
 		ORDER BY p.created_at DESC
 	`)
@@ -68,6 +72,9 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 			&project.StatusID,
 			&project.StatusName,
 			&project.StatusColor,
+			&project.PriorityID,
+			&project.PriorityName,
+			&project.PriorityColor,
 			&project.TicketPrefix,
 			&project.StatusType,
 			&project.Type,
@@ -97,6 +104,7 @@ func (r *ProjectRepository) GetByID(id int) (*models.Project, error) {
 			COALESCE(description, '') AS description,
 			owner_id,
 			status_id,
+			COALESCE(priority_id, 0) AS priority_id,
 			ticket_prefix,
 			status_type,
 			type
@@ -108,6 +116,7 @@ func (r *ProjectRepository) GetByID(id int) (*models.Project, error) {
 		&project.Description,
 		&project.OwnerID,
 		&project.StatusID,
+		&project.PriorityID,
 		&project.TicketPrefix,
 		&project.StatusType,
 		&project.Type,
@@ -137,9 +146,9 @@ func (r *ProjectRepository) Create(params models.ProjectCreateInput) error {
 	}
 
 	res, err := tx.Exec(`
-		INSERT INTO projects (name, description, owner_id, status_id, ticket_prefix, status_type, type, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-	`, params.Name, params.Description, params.OwnerID, params.StatusID, params.TicketPrefix, params.StatusType, params.Type)
+		INSERT INTO projects (name, description, owner_id, status_id, priority_id, ticket_prefix, status_type, type, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+	`, params.Name, params.Description, params.OwnerID, params.StatusID, params.PriorityID, params.TicketPrefix, params.StatusType, params.Type)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -167,9 +176,9 @@ func (r *ProjectRepository) Update(params models.ProjectUpdateInput) error {
 
 	if _, err := tx.Exec(`
 		UPDATE projects
-		SET name = ?, description = ?, owner_id = ?, status_id = ?, ticket_prefix = ?, status_type = ?, type = ?, updated_at = NOW()
+		SET name = ?, description = ?, owner_id = ?, status_id = ?, priority_id = ?, ticket_prefix = ?, status_type = ?, type = ?, updated_at = NOW()
 		WHERE id = ? AND deleted_at IS NULL
-	`, params.Name, params.Description, params.OwnerID, params.StatusID, params.TicketPrefix, params.StatusType, params.Type, params.ID); err != nil {
+	`, params.Name, params.Description, params.OwnerID, params.StatusID, params.PriorityID, params.TicketPrefix, params.StatusType, params.Type, params.ID); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -233,6 +242,30 @@ func (r *ProjectRepository) GetDivisionOptions() ([]models.DivisionOption, error
 	}
 
 	return divisions, rows.Err()
+}
+
+func (r *ProjectRepository) GetPriorityOptions() ([]models.ProjectPriorityOption, error) {
+	rows, err := r.DB.Query(`
+		SELECT id, name, color
+		FROM project_priorities
+		WHERE deleted_at IS NULL
+		ORDER BY name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var priorities []models.ProjectPriorityOption
+	for rows.Next() {
+		var priority models.ProjectPriorityOption
+		if err := rows.Scan(&priority.ID, &priority.Name, &priority.Color); err != nil {
+			return nil, err
+		}
+		priorities = append(priorities, priority)
+	}
+
+	return priorities, rows.Err()
 }
 
 func (r *ProjectRepository) FindExistingDivisionIDs(ids []int64) (map[int64]bool, error) {

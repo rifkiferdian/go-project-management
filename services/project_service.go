@@ -41,6 +41,10 @@ func (s *ProjectService) GetDivisionOptions() ([]models.DivisionOption, error) {
 	return s.Repo.GetDivisionOptions()
 }
 
+func (s *ProjectService) GetPriorityOptions() ([]models.ProjectPriorityOption, error) {
+	return s.Repo.GetPriorityOptions()
+}
+
 func (s *ProjectService) CreateProject(input models.ProjectCreateInput) error {
 	params, err := s.validateCreateInput(input)
 	if err != nil {
@@ -83,6 +87,9 @@ func (s *ProjectService) validateCreateInput(input models.ProjectCreateInput) (m
 	}
 	if input.StatusID <= 0 {
 		return input, errors.New("status project wajib dipilih")
+	}
+	if input.PriorityID <= 0 {
+		return input, errors.New("prioritas project wajib dipilih")
 	}
 	if prefix == "" || len(prefix) > 3 {
 		return input, errors.New("ticket prefix wajib diisi maksimal 3 karakter")
@@ -142,6 +149,9 @@ func (s *ProjectService) validateUpdateInput(input models.ProjectUpdateInput) (m
 	}
 	if input.StatusID <= 0 {
 		return input, errors.New("status project wajib dipilih")
+	}
+	if input.PriorityID <= 0 {
+		return input, errors.New("prioritas project wajib dipilih")
 	}
 	if prefix == "" || len(prefix) > 3 {
 		return input, errors.New("ticket prefix wajib diisi maksimal 3 karakter")
