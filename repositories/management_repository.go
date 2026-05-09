@@ -752,6 +752,7 @@ func (r *ManagementRepository) GetTicketTodos(ticketID int) ([]models.TicketTodo
 		item.CreatedAtDisplay = formatTimestamp(createdAtRaw)
 		item.CreatedAtRelative = relativeTime(createdAtRaw)
 		item.UpdatedAtDisplay = formatTimestamp(updatedAtRaw)
+		item.UpdatedAtDateID = formatDateIDShort(updatedAtRaw)
 		item.UpdatedAtRelative = relativeTime(updatedAtRaw)
 		items = append(items, item)
 	}
@@ -1569,6 +1570,20 @@ func formatTimestamp(value sql.NullTime) string {
 		return "-"
 	}
 	return value.Time.Format("02 Jan 06")
+}
+
+func formatDateIDShort(value sql.NullTime) string {
+	if !value.Valid {
+		return "-"
+	}
+
+	months := [...]string{"Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"}
+	month := int(value.Time.Month())
+	if month < 1 || month > 12 {
+		return value.Time.Format("02 Jan 06")
+	}
+
+	return fmt.Sprintf("%02d %s %02d", value.Time.Day(), months[month-1], value.Time.Year()%100)
 }
 
 func relativeTime(value sql.NullTime) string {

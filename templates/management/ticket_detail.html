@@ -183,7 +183,7 @@
                                                     </span>
                                                     <div class="min-w-0 flex-1">
                                                         <p class="text-sm {{ if .IsDone }}text-slate-400 line-through{{ else }}text-slate-800{{ end }}" data-todo-display>{{ .Content }}</p>
-                                                        <p class="mt-1 text-[11px] text-slate-400">Update {{ .UpdatedAtRelative }}</p>
+                                                        <p class="mt-1 text-[11px] text-slate-400">Update {{ .UpdatedAtDateID }} ({{ .UpdatedAtRelative }})</p>
                                                         {{ if index $.Permissions "Update ticket" }}
                                                         <div class="mt-2 flex flex-wrap items-center gap-2">
                                                             <button type="button" class="text-[11px] font-semibold text-slate-500 transition hover:text-[#f26419]" data-todo-edit-toggle>

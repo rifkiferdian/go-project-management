@@ -121,6 +121,7 @@ type TicketTodoItem struct {
 	CreatedAtDisplay  string
 	CreatedAtRelative string
 	UpdatedAtDisplay  string
+	UpdatedAtDateID   string
 	UpdatedAtRelative string
 }
 
