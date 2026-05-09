@@ -382,6 +382,8 @@ func getProjectKanbanProjects() ([]models.Project, error) {
 				p.name,
 				COALESCE(NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), ''), '-') AS request_division,
 				COALESCE(dev.name, '-') AS developer_name,
+				COALESCE(pp.name, '-') AS priority_name,
+				COALESCE(NULLIF(TRIM(pp.color), ''), '#cecece') AS priority_color,
 				p.status_id,
 				ps.name AS status_name,
 				COALESCE(NULLIF(TRIM(ps.color), ''), '#cecece') AS status_color,
@@ -389,12 +391,13 @@ func getProjectKanbanProjects() ([]models.Project, error) {
 			FROM projects p
 			JOIN project_statuses ps ON ps.id = p.status_id
 			LEFT JOIN users dev ON dev.id = p.developer_id AND dev.deleted_at IS NULL
+			LEFT JOIN project_priorities pp ON pp.id = p.priority_id AND pp.deleted_at IS NULL
 			LEFT JOIN project_divisions pd ON pd.project_id = p.id
 			LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
 			WHERE p.deleted_at IS NULL
 				AND ps.deleted_at IS NULL
 			GROUP BY
-				p.id, p.name, dev.name, ps.id, ps.name, ps.color, p.created_at
+				p.id, p.name, dev.name, pp.name, pp.color, ps.id, ps.name, ps.color, p.created_at
 			ORDER BY p.created_at DESC, p.id DESC
 		`)
 	if err != nil {
@@ -414,6 +417,8 @@ func getProjectKanbanProjects() ([]models.Project, error) {
 			&project.Name,
 			&project.RequestDivision,
 			&project.DeveloperName,
+			&project.PriorityName,
+			&project.PriorityColor,
 			&project.StatusID,
 			&project.StatusName,
 			&project.StatusColor,
@@ -453,8 +458,8 @@ func getRecentTicketActivities() ([]models.TicketActivityItem, error) {
 		WHERE t.deleted_at IS NULL
 			AND p.deleted_at IS NULL
 		ORDER BY ta.created_at DESC, ta.id DESC
-		LIMIT 8
-	`)
+			LIMIT 10
+		`)
 	if err != nil {
 		return nil, err
 	}
