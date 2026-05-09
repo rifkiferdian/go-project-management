@@ -259,21 +259,17 @@ func getUrgentProjects(limit int) ([]models.DashboardProjectListItem, error) {
 			COALESCE(NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), ''), '-') AS request_division,
 			ps.name AS status_name,
 			COALESCE(ps.color, '#64748b') AS status_color,
-			COUNT(DISTINCT CASE
-				WHEN LOWER(COALESCE(tp.name, '')) IN ('high', 'urgent', 'critical', 'tinggi')
-				THEN t.id
-			END) AS high_priority_ticket_count
+			1 AS high_priority_ticket_count
 		FROM projects p
 		JOIN project_statuses ps ON ps.id = p.status_id
+		LEFT JOIN project_priorities pp ON pp.id = p.priority_id AND pp.deleted_at IS NULL
 		LEFT JOIN project_divisions pd ON pd.project_id = p.id
 		LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
-		LEFT JOIN tickets t ON t.project_id = p.id AND t.deleted_at IS NULL
-		LEFT JOIN ticket_priorities tp ON tp.id = t.priority_id AND tp.deleted_at IS NULL
 		WHERE p.deleted_at IS NULL
 			AND ps.deleted_at IS NULL
+			AND LOWER(COALESCE(pp.name, '')) IN ('high', 'urgent', 'critical', 'tinggi')
 		GROUP BY p.id, p.name, ps.name, ps.color, p.created_at
-		HAVING high_priority_ticket_count > 0
-		ORDER BY high_priority_ticket_count DESC, p.created_at ASC, p.id ASC
+		ORDER BY p.created_at ASC, p.id ASC
 		LIMIT ?
 	`, limit)
 	if err != nil {
@@ -319,12 +315,14 @@ func getRequestQueueProjects(limit int) ([]models.DashboardProjectListItem, erro
 		WHERE p.deleted_at IS NULL
 			AND ps.deleted_at IS NULL
 			AND (
-				LOWER(ps.name) LIKE '%request%'
-				OR LOWER(ps.name) LIKE '%menunggu%'
-				OR LOWER(ps.name) LIKE '%antrian%'
-				OR LOWER(ps.name) LIKE '%queue%'
-				OR LOWER(ps.name) LIKE '%waiting%'
-				OR LOWER(ps.name) LIKE '%backlog%'
+				LOWER(TRIM(COALESCE(ps.name, ''))) IN ('request received', 'menunggu', 'antrian', 'queue', 'waiting', 'backlog')
+				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE 'request%'
+				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '% request%'
+				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '%menunggu%'
+				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '%antrian%'
+				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '%queue%'
+				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '%waiting%'
+				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '%backlog%'
 			)
 		GROUP BY p.id, p.name, ps.name, ps.color, p.created_at
 		ORDER BY p.created_at ASC, p.id ASC
