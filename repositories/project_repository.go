@@ -14,15 +14,17 @@ type ProjectRepository struct {
 // GetAll mengambil seluruh project aktif beserta owner, status, dan ringkasan relasi.
 func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 	rows, err := r.DB.Query(`
-		SELECT
-			p.id,
-			p.name,
-			COALESCE(p.description, '') AS description,
-			p.owner_id,
-			u.name AS owner_name,
-			COALESCE(GROUP_CONCAT(DISTINCT d.id ORDER BY d.id SEPARATOR ','), '') AS request_division_ids_csv,
-			COALESCE(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), '-') AS request_division,
-			p.status_id,
+			SELECT
+				p.id,
+				p.name,
+				COALESCE(p.description, '') AS description,
+				p.owner_id,
+				u.name AS owner_name,
+				COALESCE(p.developer_id, 0) AS developer_id,
+				COALESCE(dev.name, '-') AS developer_name,
+				COALESCE(GROUP_CONCAT(DISTINCT d.id ORDER BY d.id SEPARATOR ','), '') AS request_division_ids_csv,
+				COALESCE(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), '-') AS request_division,
+				p.status_id,
 			ps.name AS status_name,
 			ps.color AS status_color,
 			COALESCE(p.priority_id, 0) AS priority_id,
@@ -34,20 +36,21 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 			COUNT(DISTINCT pu.user_id) AS member_count,
 			COUNT(DISTINCT t.id) AS ticket_count,
 			p.created_at
-		FROM projects p
-		JOIN users u ON u.id = p.owner_id
-		JOIN project_statuses ps ON ps.id = p.status_id
-		LEFT JOIN project_priorities pp ON pp.id = p.priority_id AND pp.deleted_at IS NULL
+			FROM projects p
+			JOIN users u ON u.id = p.owner_id
+			LEFT JOIN users dev ON dev.id = p.developer_id AND dev.deleted_at IS NULL
+			JOIN project_statuses ps ON ps.id = p.status_id
+			LEFT JOIN project_priorities pp ON pp.id = p.priority_id AND pp.deleted_at IS NULL
 		LEFT JOIN project_divisions pd ON pd.project_id = p.id
 		LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
 		LEFT JOIN project_users pu ON pu.project_id = p.id
 		LEFT JOIN tickets t ON t.project_id = p.id AND t.deleted_at IS NULL
 		WHERE p.deleted_at IS NULL
-		GROUP BY
-			p.id, p.name, p.description, p.owner_id, u.name, p.status_id, ps.name, ps.color, p.priority_id, pp.name, pp.color,
-			p.ticket_prefix, p.status_type, p.type, p.created_at
-		ORDER BY p.created_at DESC
-	`)
+			GROUP BY
+				p.id, p.name, p.description, p.owner_id, u.name, p.developer_id, dev.name, p.status_id, ps.name, ps.color, p.priority_id, pp.name, pp.color,
+				p.ticket_prefix, p.status_type, p.type, p.created_at
+			ORDER BY p.created_at DESC
+		`)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +70,8 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 			&project.Description,
 			&project.OwnerID,
 			&project.OwnerName,
+			&project.DeveloperID,
+			&project.DeveloperName,
 			&requestDivisionIDsCSV,
 			&project.RequestDivision,
 			&project.StatusID,
@@ -98,14 +103,15 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 func (r *ProjectRepository) GetByID(id int) (*models.Project, error) {
 	var project models.Project
 	err := r.DB.QueryRow(`
-		SELECT
-			id,
-			name,
-			COALESCE(description, '') AS description,
-			owner_id,
-			status_id,
-			COALESCE(priority_id, 0) AS priority_id,
-			ticket_prefix,
+			SELECT
+				id,
+				name,
+				COALESCE(description, '') AS description,
+				owner_id,
+				COALESCE(developer_id, 0) AS developer_id,
+				status_id,
+				COALESCE(priority_id, 0) AS priority_id,
+				ticket_prefix,
 			status_type,
 			type
 		FROM projects
@@ -115,6 +121,7 @@ func (r *ProjectRepository) GetByID(id int) (*models.Project, error) {
 		&project.Name,
 		&project.Description,
 		&project.OwnerID,
+		&project.DeveloperID,
 		&project.StatusID,
 		&project.PriorityID,
 		&project.TicketPrefix,
@@ -146,9 +153,9 @@ func (r *ProjectRepository) Create(params models.ProjectCreateInput) error {
 	}
 
 	res, err := tx.Exec(`
-		INSERT INTO projects (name, description, owner_id, status_id, priority_id, ticket_prefix, status_type, type, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-	`, params.Name, params.Description, params.OwnerID, params.StatusID, params.PriorityID, params.TicketPrefix, params.StatusType, params.Type)
+			INSERT INTO projects (name, description, owner_id, developer_id, status_id, priority_id, ticket_prefix, status_type, type, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+		`, params.Name, params.Description, params.OwnerID, params.DeveloperID, params.StatusID, params.PriorityID, params.TicketPrefix, params.StatusType, params.Type)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -175,10 +182,10 @@ func (r *ProjectRepository) Update(params models.ProjectUpdateInput) error {
 	}
 
 	if _, err := tx.Exec(`
-		UPDATE projects
-		SET name = ?, description = ?, owner_id = ?, status_id = ?, priority_id = ?, ticket_prefix = ?, status_type = ?, type = ?, updated_at = NOW()
-		WHERE id = ? AND deleted_at IS NULL
-	`, params.Name, params.Description, params.OwnerID, params.StatusID, params.PriorityID, params.TicketPrefix, params.StatusType, params.Type, params.ID); err != nil {
+			UPDATE projects
+			SET name = ?, description = ?, owner_id = ?, developer_id = ?, status_id = ?, priority_id = ?, ticket_prefix = ?, status_type = ?, type = ?, updated_at = NOW()
+			WHERE id = ? AND deleted_at IS NULL
+		`, params.Name, params.Description, params.OwnerID, params.DeveloperID, params.StatusID, params.PriorityID, params.TicketPrefix, params.StatusType, params.Type, params.ID); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -301,6 +308,28 @@ func (r *ProjectRepository) FindExistingDivisionIDs(ids []int64) (map[int64]bool
 	}
 
 	return result, rows.Err()
+}
+
+func (r *ProjectRepository) IsUserInDivision(userID int, divisionName string) (bool, error) {
+	if userID <= 0 || strings.TrimSpace(divisionName) == "" {
+		return false, nil
+	}
+
+	var count int
+	err := r.DB.QueryRow(`
+		SELECT COUNT(1)
+		FROM users u
+		JOIN user_divisions ud ON ud.user_id = u.id
+		JOIN divisions d ON d.id = ud.division_id
+		WHERE u.id = ?
+			AND u.deleted_at IS NULL
+			AND d.deleted_at IS NULL
+			AND LOWER(TRIM(d.name)) = LOWER(TRIM(?))
+	`, userID, divisionName).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (r *ProjectRepository) replaceProjectDivisions(tx *sql.Tx, projectID int, divisionIDs []int64) error {

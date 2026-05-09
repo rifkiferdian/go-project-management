@@ -7,6 +7,8 @@ type Project struct {
 	Description        string
 	OwnerID            int
 	OwnerName          string
+	DeveloperID        int
+	DeveloperName      string
 	RequestDivision    string
 	RequestDivisionIDs []int
 	StatusID           int
@@ -29,6 +31,7 @@ type ProjectCreateInput struct {
 	Name         string
 	Description  string
 	OwnerID      int
+	DeveloperID  int
 	DivisionIDs  []int64
 	StatusID     int
 	PriorityID   int
@@ -43,6 +46,7 @@ type ProjectUpdateInput struct {
 	Name         string
 	Description  string
 	OwnerID      int
+	DeveloperID  int
 	DivisionIDs  []int64
 	StatusID     int
 	PriorityID   int

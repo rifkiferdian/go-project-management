@@ -95,6 +95,39 @@ func (r *UserRepository) GetAll() ([]models.User, error) {
 	return users, rows.Err()
 }
 
+// GetByDivisionName mengambil user aktif yang terdaftar pada divisi tertentu.
+func (r *UserRepository) GetByDivisionName(divisionName string) ([]models.User, error) {
+	rows, err := r.DB.Query(`
+		SELECT DISTINCT
+			u.id,
+			u.name,
+			u.email,
+			COALESCE(u.employee_id, '') AS employee_id
+		FROM users u
+		JOIN user_divisions ud ON ud.user_id = u.id
+		JOIN divisions d ON d.id = ud.division_id
+		WHERE u.deleted_at IS NULL
+			AND d.deleted_at IS NULL
+			AND LOWER(TRIM(d.name)) = LOWER(TRIM(?))
+		ORDER BY u.name ASC
+	`, divisionName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var user models.User
+		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.EmployeeID); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	return users, rows.Err()
+}
+
 // CreateUserWithRoles menyimpan data user baru beserta assignment rolenya dalam satu transaksi.
 func (r *UserRepository) CreateUserWithRoles(params UserCreateParams, roleIDs []int64) (int64, error) {
 	tx, err := r.DB.Begin()

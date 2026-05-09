@@ -82,6 +82,9 @@ func (s *ProjectService) validateCreateInput(input models.ProjectCreateInput) (m
 	if input.OwnerID <= 0 {
 		return input, errors.New("owner project wajib dipilih")
 	}
+	if input.DeveloperID <= 0 {
+		return input, errors.New("developer project wajib dipilih")
+	}
 	if len(divisionIDs) == 0 {
 		return input, errors.New("minimal pilih 1 divisi requester")
 	}
@@ -117,6 +120,14 @@ func (s *ProjectService) validateCreateInput(input models.ProjectCreateInput) (m
 		return input, fmt.Errorf("divisi requester tidak ditemukan: %s", strings.Join(missingDivisions, ", "))
 	}
 
+	isITDeveloper, err := s.Repo.IsUserInDivision(input.DeveloperID, "IT")
+	if err != nil {
+		return input, err
+	}
+	if !isITDeveloper {
+		return input, errors.New("developer harus user dari divisi IT")
+	}
+
 	input.Name = name
 	input.Description = description
 	input.DivisionIDs = divisionIDs
@@ -143,6 +154,9 @@ func (s *ProjectService) validateUpdateInput(input models.ProjectUpdateInput) (m
 	}
 	if input.OwnerID <= 0 {
 		return input, errors.New("owner project wajib dipilih")
+	}
+	if input.DeveloperID <= 0 {
+		return input, errors.New("developer project wajib dipilih")
 	}
 	if len(divisionIDs) == 0 {
 		return input, errors.New("minimal pilih 1 divisi requester")
@@ -177,6 +191,14 @@ func (s *ProjectService) validateUpdateInput(input models.ProjectUpdateInput) (m
 	}
 	if len(missingDivisions) > 0 {
 		return input, fmt.Errorf("divisi requester tidak ditemukan: %s", strings.Join(missingDivisions, ", "))
+	}
+
+	isITDeveloper, err := s.Repo.IsUserInDivision(input.DeveloperID, "IT")
+	if err != nil {
+		return input, err
+	}
+	if !isITDeveloper {
+		return input, errors.New("developer harus user dari divisi IT")
 	}
 
 	input.Name = name

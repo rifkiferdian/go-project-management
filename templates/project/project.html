@@ -60,12 +60,10 @@
                                                     <th class="px-3 py-2 text-left font-semibold">#</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Project</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Owner</th>
+                                                    <th class="px-3 py-2 text-left font-semibold">Developer</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Divisi Requester</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Status</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Priority</th>
-                                                    <th class="px-3 py-2 text-left font-semibold">Type</th>
-                                                    <th class="px-3 py-2 text-left font-semibold">Prefix</th>
-                                                    <th class="px-3 py-2 text-left font-semibold">Members</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Tickets</th>
                                                     <th class="px-3 py-2 text-left font-semibold">Aksi</th>
                                                 </tr>
@@ -79,6 +77,7 @@
                                                         <div class="mt-1 text-xs text-slate-400">{{ $project.CreatedAtDisplay }}</div>
                                                     </td>
                                                     <td class="px-3 py-3 text-slate-600">{{ $project.OwnerName }}</td>
+                                                    <td class="px-3 py-3 text-slate-600">{{ $project.DeveloperName }}</td>
                                                     <td class="px-3 py-3 text-slate-600">{{ $project.RequestDivision }}</td>
                                                     <td class="px-3 py-3">
                                                         <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
@@ -92,13 +91,10 @@
                                                             {{ $project.PriorityName }}
                                                         </span>
                                                     </td>
-                                                    <td class="px-3 py-3 text-slate-600">{{ $project.Type }}</td>
-                                                    <td class="px-3 py-3 font-semibold text-slate-700">{{ $project.TicketPrefix }}</td>
-                                                    <td class="px-3 py-3 text-slate-600">{{ $project.MemberCount }}</td>
                                                     <td class="px-3 py-3 text-slate-600">{{ $project.TicketCount }}</td>
                                                     <td class="px-3 py-3">
                                                         <div class="flex flex-wrap items-center gap-2">
-                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
+                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-developer-id="{{ $project.DeveloperID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
                                                             </button>
@@ -111,7 +107,7 @@
                                                 </tr>
                                                 {{ else }}
                                                 <tr>
-                                                    <td colspan="11" class="px-3 py-6 text-center text-sm text-slate-500">Belum ada data project</td>
+                                                    <td colspan="9" class="px-3 py-6 text-center text-sm text-slate-500">Belum ada data project</td>
                                                 </tr>
                                                 {{ end }}
                                             </tbody>
@@ -159,6 +155,10 @@
                                                                 {{ $project.OwnerName }}
                                                             </span>
                                                             <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                                                                <i class="bx bx-code-alt text-sm"></i>
+                                                                {{ $project.DeveloperName }}
+                                                            </span>
+                                                            <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                                                                 <i class="bx bx-buildings text-sm"></i>
                                                                 {{ $project.RequestDivision }}
                                                             </span>
@@ -176,7 +176,7 @@
                                                             <span>{{ $project.TicketCount }} ticket</span>
                                                         </div>
                                                         <div class="mt-4 flex flex-wrap items-center gap-2">
-                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
+                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-developer-id="{{ $project.DeveloperID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
                                                             </button>
@@ -241,6 +241,15 @@
                                     <option value="">Pilih owner</option>
                                     {{ range .users }}
                                     <option value="{{ .ID }}" {{ with $.Old }}{{ if eq .OwnerID $.ID }}selected{{ end }}{{ end }}>{{ .Name }} ({{ .Email }})</option>
+                                    {{ end }}
+                                </select>
+                            </div>
+                            <div>
+                                <label for="developer_id" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Developer (Divisi IT)</label>
+                                <select id="developer_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" name="developer_id" required>
+                                    <option value="">Pilih developer</option>
+                                    {{ range .developerUsers }}
+                                    <option value="{{ .ID }}" {{ with $.Old }}{{ if eq .DeveloperID $.ID }}selected{{ end }}{{ end }}>{{ .Name }} ({{ .Email }})</option>
                                     {{ end }}
                                 </select>
                             </div>
@@ -324,6 +333,15 @@
                                 <select id="edit_owner_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" name="owner_id" required>
                                     <option value="">Pilih owner</option>
                                     {{ range .users }}
+                                    <option value="{{ .ID }}">{{ .Name }} ({{ .Email }})</option>
+                                    {{ end }}
+                                </select>
+                            </div>
+                            <div>
+                                <label for="edit_developer_id" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Developer (Divisi IT)</label>
+                                <select id="edit_developer_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" name="developer_id" required>
+                                    <option value="">Pilih developer</option>
+                                    {{ range .developerUsers }}
                                     <option value="{{ .ID }}">{{ .Name }} ({{ .Email }})</option>
                                     {{ end }}
                                 </select>
@@ -490,6 +508,7 @@
                         modal.querySelector('#edit_name').value = btn.getAttribute('data-name') || '';
                         modal.querySelector('#edit_description').value = btn.getAttribute('data-description') || '';
                         modal.querySelector('#edit_owner_id').value = btn.getAttribute('data-owner-id') || '';
+                        modal.querySelector('#edit_developer_id').value = btn.getAttribute('data-developer-id') || '';
                         setMultiSelect(modal.querySelector('#edit_request_divisions'), parseListAttr(btn.getAttribute('data-request-divisions')));
                         modal.querySelector('#edit_status_id').value = btn.getAttribute('data-status-id') || '';
                         modal.querySelector('#edit_priority_id').value = btn.getAttribute('data-priority-id') || '';

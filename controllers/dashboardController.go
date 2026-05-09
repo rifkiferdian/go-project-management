@@ -377,24 +377,26 @@ func getProjectKanbanStatuses() ([]models.ProjectStatusOption, error) {
 
 func getProjectKanbanProjects() ([]models.Project, error) {
 	rows, err := config.DB.Query(`
-		SELECT
-			p.id,
-			p.name,
-			COALESCE(NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), ''), '-') AS request_division,
-			p.status_id,
-			ps.name AS status_name,
-			COALESCE(NULLIF(TRIM(ps.color), ''), '#cecece') AS status_color,
-			p.created_at
-		FROM projects p
-		JOIN project_statuses ps ON ps.id = p.status_id
-		LEFT JOIN project_divisions pd ON pd.project_id = p.id
-		LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
-		WHERE p.deleted_at IS NULL
-			AND ps.deleted_at IS NULL
-		GROUP BY
-			p.id, p.name, ps.id, ps.name, ps.color, p.created_at
-		ORDER BY p.created_at DESC, p.id DESC
-	`)
+			SELECT
+				p.id,
+				p.name,
+				COALESCE(NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), ''), '-') AS request_division,
+				COALESCE(dev.name, '-') AS developer_name,
+				p.status_id,
+				ps.name AS status_name,
+				COALESCE(NULLIF(TRIM(ps.color), ''), '#cecece') AS status_color,
+				p.created_at
+			FROM projects p
+			JOIN project_statuses ps ON ps.id = p.status_id
+			LEFT JOIN users dev ON dev.id = p.developer_id AND dev.deleted_at IS NULL
+			LEFT JOIN project_divisions pd ON pd.project_id = p.id
+			LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
+			WHERE p.deleted_at IS NULL
+				AND ps.deleted_at IS NULL
+			GROUP BY
+				p.id, p.name, dev.name, ps.id, ps.name, ps.color, p.created_at
+			ORDER BY p.created_at DESC, p.id DESC
+		`)
 	if err != nil {
 		return nil, err
 	}
@@ -411,6 +413,7 @@ func getProjectKanbanProjects() ([]models.Project, error) {
 			&project.ID,
 			&project.Name,
 			&project.RequestDivision,
+			&project.DeveloperName,
 			&project.StatusID,
 			&project.StatusName,
 			&project.StatusColor,

@@ -25,6 +25,7 @@ func ProjectStore(c *gin.Context) {
 		Name         string `form:"name" binding:"required"`
 		Description  string `form:"description"`
 		OwnerID      int    `form:"owner_id" binding:"required"`
+		DeveloperID  int    `form:"developer_id" binding:"required"`
 		StatusID     int    `form:"status_id" binding:"required"`
 		PriorityID   int    `form:"priority_id" binding:"required"`
 		TicketPrefix string `form:"ticket_prefix" binding:"required"`
@@ -53,6 +54,7 @@ func ProjectStore(c *gin.Context) {
 		Name:         strings.TrimSpace(form.Name),
 		Description:  strings.TrimSpace(form.Description),
 		OwnerID:      form.OwnerID,
+		DeveloperID:  form.DeveloperID,
 		DivisionIDs:  divisionIDs,
 		StatusID:     form.StatusID,
 		PriorityID:   form.PriorityID,
@@ -66,6 +68,7 @@ func ProjectStore(c *gin.Context) {
 			Name:               input.Name,
 			Description:        input.Description,
 			OwnerID:            input.OwnerID,
+			DeveloperID:        input.DeveloperID,
 			RequestDivisionIDs: ints64ToInts(input.DivisionIDs),
 			StatusID:           input.StatusID,
 			PriorityID:         input.PriorityID,
@@ -85,6 +88,7 @@ func ProjectUpdate(c *gin.Context) {
 		Name         string `form:"name" binding:"required"`
 		Description  string `form:"description"`
 		OwnerID      int    `form:"owner_id" binding:"required"`
+		DeveloperID  int    `form:"developer_id" binding:"required"`
 		StatusID     int    `form:"status_id" binding:"required"`
 		PriorityID   int    `form:"priority_id" binding:"required"`
 		TicketPrefix string `form:"ticket_prefix" binding:"required"`
@@ -114,6 +118,7 @@ func ProjectUpdate(c *gin.Context) {
 		Name:         strings.TrimSpace(form.Name),
 		Description:  strings.TrimSpace(form.Description),
 		OwnerID:      form.OwnerID,
+		DeveloperID:  form.DeveloperID,
 		DivisionIDs:  divisionIDs,
 		StatusID:     form.StatusID,
 		PriorityID:   form.PriorityID,
@@ -128,6 +133,7 @@ func ProjectUpdate(c *gin.Context) {
 			Name:               input.Name,
 			Description:        input.Description,
 			OwnerID:            input.OwnerID,
+			DeveloperID:        input.DeveloperID,
 			RequestDivisionIDs: ints64ToInts(input.DivisionIDs),
 			StatusID:           input.StatusID,
 			PriorityID:         input.PriorityID,
@@ -189,17 +195,23 @@ func renderProjectPage(c *gin.Context, projectService *services.ProjectService, 
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+	developerUsers, err := userRepo.GetByDivisionName("IT")
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	Render(c, "project.html", gin.H{
-		"Title":      "Daftar Project",
-		"Page":       "project",
-		"projects":   projects,
-		"statuses":   statuses,
-		"users":      users,
-		"divisions":  divisions,
-		"priorities": priorities,
-		"Old":        old,
-		"Error":      message,
+		"Title":          "Daftar Project",
+		"Page":           "project",
+		"projects":       projects,
+		"statuses":       statuses,
+		"users":          users,
+		"developerUsers": developerUsers,
+		"divisions":      divisions,
+		"priorities":     priorities,
+		"Old":            old,
+		"Error":          message,
 	})
 }
 
