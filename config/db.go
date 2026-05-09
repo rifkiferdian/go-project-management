@@ -36,6 +36,9 @@ func Connect() {
 	if err := ensureTicketScheduleColumns(DB, os.Getenv("DB_NAME")); err != nil {
 		panic(err)
 	}
+	if err := ensureUserColumns(DB, os.Getenv("DB_NAME")); err != nil {
+		panic(err)
+	}
 	if err := ensureTicketAttachmentsTable(DB); err != nil {
 		panic(err)
 	}
@@ -71,6 +74,37 @@ func ensureTicketScheduleColumns(db *sql.DB, dbName string) error {
 			continue
 		}
 		if _, err := db.Exec("ALTER TABLE tickets " + column.definition); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func ensureUserColumns(db *sql.DB, dbName string) error {
+	columns := []struct {
+		name       string
+		definition string
+	}{
+		{name: "employee_id", definition: "ADD COLUMN `employee_id` VARCHAR(100) NULL AFTER `email`"},
+	}
+
+	for _, column := range columns {
+		var count int
+		err := db.QueryRow(`
+			SELECT COUNT(1)
+			FROM INFORMATION_SCHEMA.COLUMNS
+			WHERE TABLE_SCHEMA = ?
+				AND TABLE_NAME = 'users'
+				AND COLUMN_NAME = ?
+		`, dbName, column.name).Scan(&count)
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			continue
+		}
+		if _, err := db.Exec("ALTER TABLE users " + column.definition); err != nil {
 			return err
 		}
 	}

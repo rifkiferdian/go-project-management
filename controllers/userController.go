@@ -22,9 +22,10 @@ func UserIndex(c *gin.Context) {
 
 func UserStore(c *gin.Context) {
 	type userForm struct {
-		Name     string `form:"name" binding:"required"`
-		Password string `form:"password" binding:"required"`
-		Email    string `form:"email" binding:"required"`
+		Name       string `form:"name" binding:"required"`
+		Password   string `form:"password" binding:"required"`
+		Email      string `form:"email" binding:"required"`
+		EmployeeID string `form:"employee_id"`
 	}
 
 	var (
@@ -48,6 +49,7 @@ func UserStore(c *gin.Context) {
 		Name:        strings.TrimSpace(form.Name),
 		Password:    form.Password,
 		Email:       strings.TrimSpace(form.Email),
+		EmployeeID:  strings.TrimSpace(form.EmployeeID),
 		DivisionIDs: divisionIDs,
 		RoleNames:   c.PostFormArray("roles"),
 	}
@@ -63,10 +65,11 @@ func UserStore(c *gin.Context) {
 // UserUpdate memperbarui data user yang sudah ada.
 func UserUpdate(c *gin.Context) {
 	type userUpdateForm struct {
-		ID       int    `form:"user_id" binding:"required"`
-		Name     string `form:"name" binding:"required"`
-		Password string `form:"password"`
-		Email    string `form:"email" binding:"required"`
+		ID         int    `form:"user_id" binding:"required"`
+		Name       string `form:"name" binding:"required"`
+		Password   string `form:"password"`
+		Email      string `form:"email" binding:"required"`
+		EmployeeID string `form:"employee_id"`
 	}
 
 	var (
@@ -91,6 +94,7 @@ func UserUpdate(c *gin.Context) {
 		Name:        strings.TrimSpace(form.Name),
 		Password:    form.Password,
 		Email:       strings.TrimSpace(form.Email),
+		EmployeeID:  strings.TrimSpace(form.EmployeeID),
 		DivisionIDs: divisionIDs,
 		RoleNames:   c.PostFormArray("roles"),
 	}

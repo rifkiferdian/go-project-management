@@ -5,6 +5,7 @@ type User struct {
 	ID               int
 	Name             string
 	Email            string
+	EmployeeID       string
 	DivisionDisplay  string
 	DivisionNames    []string
 	DivisionIDs      []int
@@ -18,6 +19,7 @@ type User struct {
 type UserCreateInput struct {
 	Name        string
 	Email       string
+	EmployeeID  string
 	Password    string
 	DivisionIDs []int64
 	RoleNames   []string
@@ -28,6 +30,7 @@ type UserUpdateInput struct {
 	ID          int
 	Name        string
 	Email       string
+	EmployeeID  string
 	Password    string
 	DivisionIDs []int64
 	RoleNames   []string

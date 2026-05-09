@@ -1,0 +1,6 @@
+START TRANSACTION;
+
+ALTER TABLE `users`
+  ADD COLUMN IF NOT EXISTS `employee_id` varchar(100) DEFAULT NULL AFTER `email`;
+
+COMMIT;

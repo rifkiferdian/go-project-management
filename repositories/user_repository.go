@@ -18,6 +18,7 @@ type UserCreateParams struct {
 	HashedPassword string
 	Name           string
 	Email          string
+	EmployeeID     string
 	DivisionIDs    []int64
 }
 
@@ -26,6 +27,7 @@ type UserUpdateParams struct {
 	HashedPassword string
 	Name           string
 	Email          string
+	EmployeeID     string
 	DivisionIDs    []int64
 }
 
@@ -36,6 +38,7 @@ func (r *UserRepository) GetAll() ([]models.User, error) {
 			u.id,
 			u.name, 
 			u.email, 
+			COALESCE(u.employee_id, '') AS employee_id,
 			COALESCE(GROUP_CONCAT(DISTINCT d.id ORDER BY d.id SEPARATOR ','), '') AS division_ids_csv,
 			COALESCE(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), '') AS division_display,
 			u.created_at,
@@ -46,7 +49,7 @@ func (r *UserRepository) GetAll() ([]models.User, error) {
 		LEFT JOIN model_has_roles mhr ON mhr.model_id = u.id AND mhr.model_type = ?
 		LEFT JOIN roles r2 ON r2.id = mhr.role_id
 		WHERE u.deleted_at IS NULL
-		GROUP BY u.id, u.name, u.email, u.created_at
+		GROUP BY u.id, u.name, u.email, u.employee_id, u.created_at
 		ORDER BY u.created_at DESC
 	`, userModelType)
 	if err != nil {
@@ -66,6 +69,7 @@ func (r *UserRepository) GetAll() ([]models.User, error) {
 			&u.ID,
 			&u.Name,
 			&u.Email,
+			&u.EmployeeID,
 			&divisionIDsCSV,
 			&u.DivisionDisplay,
 			&createdAt,
@@ -99,9 +103,9 @@ func (r *UserRepository) CreateUserWithRoles(params UserCreateParams, roleIDs []
 	}
 
 	res, err := tx.Exec(`
-		INSERT INTO users (name, email, password, type, created_at, updated_at)
-		VALUES (?, ?, ?, 'db', NOW(), NOW())
-	`, params.Name, params.Email, params.HashedPassword)
+		INSERT INTO users (name, email, employee_id, password, type, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'db', NOW(), NOW())
+	`, params.Name, params.Email, params.EmployeeID, params.HashedPassword)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
@@ -169,18 +173,18 @@ func (r *UserRepository) UpdateUserWithRoles(params UserUpdateParams, roleIDs []
 	if params.HashedPassword != "" {
 		if _, err := tx.Exec(`
 			UPDATE users
-			SET password = ?, name = ?, email = ?, updated_at = NOW()
+			SET password = ?, name = ?, email = ?, employee_id = ?, updated_at = NOW()
 			WHERE id = ? AND deleted_at IS NULL
-		`, params.HashedPassword, params.Name, params.Email, params.ID); err != nil {
+		`, params.HashedPassword, params.Name, params.Email, params.EmployeeID, params.ID); err != nil {
 			tx.Rollback()
 			return err
 		}
 	} else {
 		if _, err := tx.Exec(`
 			UPDATE users
-			SET name = ?, email = ?, updated_at = NOW()
+			SET name = ?, email = ?, employee_id = ?, updated_at = NOW()
 			WHERE id = ? AND deleted_at IS NULL
-		`, params.Name, params.Email, params.ID); err != nil {
+		`, params.Name, params.Email, params.EmployeeID, params.ID); err != nil {
 			tx.Rollback()
 			return err
 		}

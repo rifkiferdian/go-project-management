@@ -30,6 +30,7 @@ func (s *UserService) GetDivisions() ([]models.DivisionOption, error) {
 func (s *UserService) CreateUser(input models.UserCreateInput) error {
 	name := strings.TrimSpace(input.Name)
 	email := strings.TrimSpace(input.Email)
+	employeeID := strings.TrimSpace(input.EmployeeID)
 
 	if name == "" || input.Password == "" {
 		return errors.New("nama dan password wajib diisi")
@@ -97,6 +98,7 @@ func (s *UserService) CreateUser(input models.UserCreateInput) error {
 		HashedPassword: string(hashedPassword),
 		Name:           name,
 		Email:          email,
+		EmployeeID:     employeeID,
 		DivisionIDs:    divisionIDs,
 	}, roleIDs)
 
@@ -107,6 +109,7 @@ func (s *UserService) CreateUser(input models.UserCreateInput) error {
 func (s *UserService) UpdateUser(input models.UserUpdateInput) error {
 	name := strings.TrimSpace(input.Name)
 	email := strings.TrimSpace(input.Email)
+	employeeID := strings.TrimSpace(input.EmployeeID)
 
 	if input.ID <= 0 {
 		return errors.New("user tidak valid")
@@ -182,6 +185,7 @@ func (s *UserService) UpdateUser(input models.UserUpdateInput) error {
 		HashedPassword: hashedPassword,
 		Name:           name,
 		Email:          email,
+		EmployeeID:     employeeID,
 		DivisionIDs:    divisionIDs,
 	}, roleIDs)
 }
