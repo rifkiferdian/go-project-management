@@ -11,6 +11,7 @@ func RegisterWebRoutes(r *gin.Engine) {
 	r.Use(middleware.UserMiddleware())
 
 	r.GET("/", controllers.LoginPage)
+	r.GET("/home", controllers.PublicHomePage)
 	r.GET("/login", controllers.LoginPage)
 	r.POST("/login", controllers.LoginPost)
 	r.POST("/register", controllers.CreateUser)

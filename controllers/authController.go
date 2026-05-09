@@ -16,6 +16,30 @@ import (
 
 const userModelType = "App\\Models\\User"
 
+func renderLoginPage(c *gin.Context, status int, errorMessage string) {
+	kanbanStatuses, err := getProjectKanbanStatuses()
+	if err != nil {
+		kanbanStatuses = []models.ProjectStatusOption{}
+	}
+
+	kanbanProjects, err := getProjectKanbanProjects()
+	if err != nil {
+		kanbanProjects = []models.Project{}
+	}
+
+	data := gin.H{
+		"Title":          "Login",
+		"KanbanStatuses": kanbanStatuses,
+		"KanbanProjects": kanbanProjects,
+	}
+
+	if strings.TrimSpace(errorMessage) != "" {
+		data["Error"] = errorMessage
+	}
+
+	c.HTML(status, "login.html", data)
+}
+
 func LoginPage(c *gin.Context) {
 	session := sessions.Default(c)
 	user := session.Get("user")
@@ -23,19 +47,14 @@ func LoginPage(c *gin.Context) {
 		c.Redirect(302, "/dashboard")
 		return
 	}
-	c.HTML(http.StatusOK, "login.html", gin.H{
-		"Title": "Login",
-	})
+	renderLoginPage(c, http.StatusOK, "")
 }
 
 func LoginPost(c *gin.Context) {
 	employeeID := strings.TrimSpace(c.PostForm("employee_id"))
 	password := c.PostForm("password")
 	if employeeID == "" || password == "" {
-		c.HTML(200, "login.html", gin.H{
-			"Title": "Login",
-			"Error": "Employee ID dan password wajib diisi",
-		})
+		renderLoginPage(c, http.StatusOK, "Employee ID dan password wajib diisi")
 		return
 	}
 
@@ -62,24 +81,15 @@ func LoginPost(c *gin.Context) {
 		Scan(&userID, &dbName, &dbMail, &dbPass, &dbRole)
 
 	if err == sql.ErrNoRows {
-		c.HTML(200, "login.html", gin.H{
-			"Title": "Login",
-			"Error": "Employee ID tidak ditemukan",
-		})
+		renderLoginPage(c, http.StatusOK, "Employee ID tidak ditemukan")
 		return
 	} else if err != nil {
-		c.HTML(500, "login.html", gin.H{
-			"Title": "Login",
-			"Error": "Terjadi kesalahan saat mengambil data user",
-		})
+		renderLoginPage(c, http.StatusInternalServerError, "Terjadi kesalahan saat mengambil data user")
 		return
 	}
 
 	if !dbPass.Valid || bcrypt.CompareHashAndPassword([]byte(dbPass.String), []byte(password)) != nil {
-		c.HTML(200, "login.html", gin.H{
-			"Title": "Login",
-			"Error": "Password salah",
-		})
+		renderLoginPage(c, http.StatusOK, "Password salah")
 		return
 	}
 
@@ -95,10 +105,7 @@ func LoginPost(c *gin.Context) {
 	})
 	session.Set("user_id", userID)
 	if err := session.Save(); err != nil {
-		c.HTML(500, "login.html", gin.H{
-			"Title": "Login",
-			"Error": "Gagal menyimpan sesi: " + err.Error(),
-		})
+		renderLoginPage(c, http.StatusInternalServerError, "Gagal menyimpan sesi: "+err.Error())
 		return
 	}
 
