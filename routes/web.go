@@ -12,6 +12,7 @@ func RegisterWebRoutes(r *gin.Engine) {
 
 	r.GET("/", controllers.LoginPage)
 	r.GET("/home", controllers.PublicHomePage)
+	r.GET("/home/projects/:id", controllers.PublicProjectDetailPage)
 	r.GET("/login", controllers.LoginPage)
 	r.POST("/login", controllers.LoginPost)
 	r.POST("/register", controllers.CreateUser)
