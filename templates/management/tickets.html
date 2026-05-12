@@ -48,6 +48,10 @@
                                         </select>
                                         <button type="submit" class="hidden">Filter</button>
                                     </form>
+                                    <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #22c55e;" data-modal-open="ticketCreateModal">
+                                        <i class="bx bx-plus text-base"></i>
+                                        Add Ticket
+                                    </button>
                                     <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
                                         <button type="button" class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition" data-view-toggle="kanban">
                                             <i class="bx bx-grid-alt text-base"></i>
@@ -61,6 +65,9 @@
                                 </div>
                             </div>
                             <div class="p-4">
+                                {{ if .TicketError }}
+                                <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{{ .TicketError }}</div>
+                                {{ end }}
                                 <section data-view-panel="list">
                                     <div class="overflow-x-auto">
                                         <table class="w-full min-w-[1120px] text-sm">
@@ -217,11 +224,83 @@
             </div>
         </div>
         <div id="sidebar-overlay" class="fixed inset-0 z-40 hidden bg-slate-900/50 lg:hidden"></div>
+        <div data-modal class="fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto p-4 sm:items-center sm:p-6" id="ticketCreateModal">
+            <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
+            <div class="relative w-full max-w-md rounded-[24px] bg-white p-4 shadow-xl sm:p-5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-lg font-semibold">Create Ticket</h2>
+                        <p class="mt-1 text-sm text-slate-500">Tambah ticket baru dari halaman tickets.</p>
+                    </div>
+                    <button type="button" data-modal-close class="text-slate-400 hover:text-slate-600"><i class="bx bx-x text-2xl"></i></button>
+                </div>
+                <form action="/tickets/create" method="post" class="mt-6 space-y-4" data-ticket-create-form>
+                    <input type="hidden" name="filter_project_id" value="{{ .SelectedProjectID }}" data-ticket-filter-project-id>
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Project</label>
+                        <select name="project_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10" data-ticket-create-project>
+                            <option value="">Pilih project</option>
+                            {{ range .ProjectOptions }}
+                            <option value="{{ .ID }}" {{ with $.TicketCreateOld }}{{ if eq $.ID .ProjectID }}selected{{ end }}{{ end }}>{{ .Name }}</option>
+                            {{ end }}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Epic</label>
+                        <select name="epic_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10" data-ticket-create-epic>
+                            <option value="">Tanpa epic</option>
+                            {{ range .EpicOptions }}
+                            <option value="{{ .ID }}" data-project-id="{{ .ProjectID }}">{{ .ProjectName }} - {{ .Name }}</option>
+                            {{ end }}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ticket Name</label>
+                        <input name="name" value="{{ with .TicketCreateOld }}{{ .Name }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</label>
+                            <select name="resource_user_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                                <option value="">Pilih user</option>
+                                {{ range .UserOptions }}
+                                <option value="{{ .ID }}" {{ with $.TicketCreateOld }}{{ if eq $.ID .ResourceUserID }}selected{{ end }}{{ end }}>{{ .Name }}</option>
+                                {{ end }}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Estimation (hours)</label>
+                            <input type="number" step="0.5" min="0" name="estimation" value="{{ with .TicketCreateOld }}{{ .Estimation }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                        </div>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Start Date</label>
+                            <input type="date" name="starts_at" value="{{ with .TicketCreateOld }}{{ .StartsAt }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">End Date</label>
+                            <input type="date" name="ends_at" value="{{ with .TicketCreateOld }}{{ .EndsAt }}{{ end }}" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 border-t border-slate-100 pt-4">
+                        <button type="button" data-modal-close class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600">Batal</button>
+                        <button type="submit" class="rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #22c55e;">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 var sidebar = document.getElementById('app-sidebar');
                 var overlay = document.getElementById('sidebar-overlay');
                 var toggleButtons = document.querySelectorAll('[data-sidebar-toggle]');
+                var projectFilter = document.querySelector('[data-project-filter]');
+                var projectFilterForm = document.querySelector('[data-project-filter-form]');
+                var createForm = document.querySelector('[data-ticket-create-form]');
+                var createProjectSelect = document.querySelector('[data-ticket-create-project]');
+                var createEpicSelect = document.querySelector('[data-ticket-create-epic]');
+                var createFilterProjectInput = document.querySelector('[data-ticket-filter-project-id]');
 
                 function closeSidebar() {
                     if (!sidebar) return;
@@ -245,13 +324,97 @@
 
                 if (overlay) overlay.addEventListener('click', closeSidebar);
 
-                var projectFilter = document.querySelector('[data-project-filter]');
-                var projectFilterForm = document.querySelector('[data-project-filter-form]');
                 if (projectFilter && projectFilterForm) {
                     projectFilter.addEventListener('change', function () {
+                        if (createFilterProjectInput) createFilterProjectInput.value = projectFilter.value || '0';
                         projectFilterForm.submit();
                     });
                 }
+
+                function openModal(modalId) {
+                    var modal = document.getElementById(modalId);
+                    if (!modal) return;
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    document.body.classList.add('overflow-hidden');
+                }
+
+                function closeModal(modal) {
+                    if (!modal) return;
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    document.body.classList.remove('overflow-hidden');
+                }
+
+                function syncEpicOptions() {
+                    if (!createEpicSelect || !createProjectSelect) return;
+                    var selectedProjectID = parseInt(createProjectSelect.value || '0', 10);
+                    if (isNaN(selectedProjectID)) selectedProjectID = 0;
+
+                    Array.from(createEpicSelect.options).forEach(function (option, index) {
+                        if (index === 0) {
+                            option.hidden = false;
+                            option.disabled = false;
+                            return;
+                        }
+
+                        var optionProjectID = parseInt(option.getAttribute('data-project-id') || '0', 10);
+                        var visible = selectedProjectID > 0 && optionProjectID === selectedProjectID;
+                        option.hidden = !visible;
+                        option.disabled = !visible;
+                    });
+
+                    var currentEpic = createEpicSelect.options[createEpicSelect.selectedIndex];
+                    if (currentEpic && currentEpic.disabled) createEpicSelect.value = '';
+                }
+
+                function syncCreateProjectFromFilter() {
+                    if (!createProjectSelect || !projectFilter) return;
+                    var oldValue = createProjectSelect.getAttribute('data-has-old-value');
+                    if (oldValue === '1') return;
+                    if ((createProjectSelect.value || '') !== '') return;
+
+                    var selectedFilterProjectID = parseInt(projectFilter.value || '0', 10);
+                    if (!isNaN(selectedFilterProjectID) && selectedFilterProjectID > 0) {
+                        createProjectSelect.value = String(selectedFilterProjectID);
+                    }
+                }
+
+                document.querySelectorAll('[data-modal-open]').forEach(function (trigger) {
+                    trigger.addEventListener('click', function () {
+                        var target = trigger.getAttribute('data-modal-open');
+                        if (!target) return;
+                        if (target === 'ticketCreateModal') {
+                            syncCreateProjectFromFilter();
+                            syncEpicOptions();
+                            if (createFilterProjectInput && projectFilter) createFilterProjectInput.value = projectFilter.value || '0';
+                        }
+                        openModal(target);
+                    });
+                });
+
+                document.querySelectorAll('[data-modal-close]').forEach(function (trigger) {
+                    trigger.addEventListener('click', function () {
+                        closeModal(trigger.closest('[data-modal]'));
+                    });
+                });
+
+                if (createProjectSelect) {
+                    if ((createProjectSelect.value || '') !== '') createProjectSelect.setAttribute('data-has-old-value', '1');
+                    createProjectSelect.addEventListener('change', function () {
+                        syncEpicOptions();
+                        if (createFilterProjectInput && projectFilter) createFilterProjectInput.value = projectFilter.value || '0';
+                    });
+                }
+
+                if (createForm) {
+                    createForm.addEventListener('submit', function () {
+                        if (createFilterProjectInput && projectFilter) createFilterProjectInput.value = projectFilter.value || '0';
+                    });
+                }
+
+                syncCreateProjectFromFilter();
+                syncEpicOptions();
 
                 var viewButtons = document.querySelectorAll('[data-view-toggle]');
                 var viewPanels = document.querySelectorAll('[data-view-panel]');
@@ -349,6 +512,7 @@
 
                 applyViewMode('kanban');
                 initTodoProgressCharts();
+                {{ if .OpenModal }}openModal('{{ .OpenModal }}');{{ end }}
             });
         </script>
     </body>

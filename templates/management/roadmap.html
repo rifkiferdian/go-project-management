@@ -372,7 +372,7 @@
                     <input type="hidden" name="format" value="{{ .Format }}">
                     <div>
                         <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Project</label>
-                        <select name="project_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#4f88eb] focus:ring-2 focus:ring-[#4f88eb]/10">
+                        <select name="project_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#4f88eb] focus:ring-2 focus:ring-[#4f88eb]/10" data-epic-create-project>
                             <option value="">Pilih project</option>
                             {{ range .ProjectOptions }}
                             <option value="{{ .ID }}">{{ .Name }}</option>
@@ -415,7 +415,7 @@
                     <input type="hidden" name="format" value="{{ .Format }}">
                     <div>
                         <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Project</label>
-                        <select name="project_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                        <select name="project_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10" data-ticket-create-project>
                             <option value="">Pilih project</option>
                             {{ range .ProjectOptions }}
                             <option value="{{ .ID }}">{{ .Name }}</option>
@@ -424,10 +424,10 @@
                     </div>
                     <div>
                         <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Epic</label>
-                        <select name="epic_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10">
+                        <select name="epic_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#22c55e] focus:ring-2 focus:ring-[#22c55e]/10" data-ticket-create-epic>
                             <option value="">Tanpa epic</option>
                             {{ range .EpicOptions }}
-                            <option value="{{ .ID }}">{{ .ProjectName }} - {{ .Name }}</option>
+                            <option value="{{ .ID }}" data-project-id="{{ .ProjectID }}">{{ .ProjectName }} - {{ .Name }}</option>
                             {{ end }}
                         </select>
                     </div>
@@ -479,6 +479,9 @@
                 var roadmapCanvas = document.querySelector('.gchart-canvas');
                 var firstTimelineBar = document.querySelector('[data-roadmap-bar]');
                 var currentMarker = document.getElementById('roadmap-current-marker');
+                var epicProjectSelect = document.querySelector('[data-epic-create-project]');
+                var ticketProjectSelect = document.querySelector('[data-ticket-create-project]');
+                var ticketEpicSelect = document.querySelector('[data-ticket-create-epic]');
 
                 function openModal(modalId) {
                     var modal = document.getElementById(modalId);
@@ -532,6 +535,36 @@
                     currentMarker.classList.add('is-visible');
                 }
 
+                function syncModalProjectFromFilter(selectEl) {
+                    if (!selectEl || !projectFilter) return;
+                    if ((selectEl.value || '') !== '') return;
+                    var selectedFilterProjectID = parseInt(projectFilter.value || '0', 10);
+                    if (!isNaN(selectedFilterProjectID) && selectedFilterProjectID > 0) {
+                        selectEl.value = String(selectedFilterProjectID);
+                    }
+                }
+
+                function syncTicketEpicOptions() {
+                    if (!ticketEpicSelect || !ticketProjectSelect) return;
+                    var selectedProjectID = parseInt(ticketProjectSelect.value || '0', 10);
+                    if (isNaN(selectedProjectID)) selectedProjectID = 0;
+
+                    Array.from(ticketEpicSelect.options).forEach(function (option, index) {
+                        if (index === 0) {
+                            option.hidden = false;
+                            option.disabled = false;
+                            return;
+                        }
+                        var optionProjectID = parseInt(option.getAttribute('data-project-id') || '0', 10);
+                        var visible = selectedProjectID > 0 && optionProjectID === selectedProjectID;
+                        option.hidden = !visible;
+                        option.disabled = !visible;
+                    });
+
+                    var selectedOption = ticketEpicSelect.options[ticketEpicSelect.selectedIndex];
+                    if (selectedOption && selectedOption.disabled) ticketEpicSelect.value = '';
+                }
+
                 toggleButtons.forEach(function (button) {
                     button.addEventListener('click', function () {
                         if (sidebar.classList.contains('-translate-x-full')) openSidebar(); else closeSidebar();
@@ -545,9 +578,19 @@
                         filterForm.submit();
                     });
                 }
+                if (ticketProjectSelect) {
+                    ticketProjectSelect.addEventListener('change', syncTicketEpicOptions);
+                }
                 document.querySelectorAll('[data-modal-open]').forEach(function (trigger) {
                     trigger.addEventListener('click', function () {
                         var target = trigger.getAttribute('data-modal-open');
+                        if (target === 'epicModal') {
+                            syncModalProjectFromFilter(epicProjectSelect);
+                        }
+                        if (target === 'ticketModal') {
+                            syncModalProjectFromFilter(ticketProjectSelect);
+                            syncTicketEpicOptions();
+                        }
                         if (target) openModal(target);
                     });
                 });
@@ -558,6 +601,7 @@
                 });
                 window.requestAnimationFrame(alignRoadmapScrollToData);
                 window.requestAnimationFrame(placeCurrentMarker);
+                syncTicketEpicOptions();
                 {{ if .OpenModal }}openModal('{{ .OpenModal }}');{{ end }}
             });
         </script>

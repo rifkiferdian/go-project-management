@@ -19,11 +19,49 @@ import (
 )
 
 func TicketIndex(c *gin.Context) {
-	svc := managementService()
 	selectedProjectID, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("project_id", "0")))
 	if selectedProjectID < 0 {
 		selectedProjectID = 0
 	}
+
+	renderTicketPage(c, selectedProjectID, "", "", nil)
+}
+
+func TicketStore(c *gin.Context) {
+	svc := managementService()
+	selectedProjectID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("filter_project_id")))
+	if selectedProjectID < 0 {
+		selectedProjectID = 0
+	}
+
+	projectID, _ := strconv.Atoi(c.PostForm("project_id"))
+	resourceUserID, _ := strconv.Atoi(c.PostForm("resource_user_id"))
+	estimation, _ := strconv.ParseFloat(strings.TrimSpace(c.PostForm("estimation")), 64)
+
+	input := models.RoadmapTicketCreateInput{
+		ProjectID:      projectID,
+		EpicID:         parseOptionalInt(c.PostForm("epic_id")),
+		Name:           c.PostForm("name"),
+		ResourceUserID: resourceUserID,
+		Estimation:     estimation,
+		StartsAt:       c.PostForm("starts_at"),
+		EndsAt:         c.PostForm("ends_at"),
+	}
+
+	if err := svc.CreateRoadmapTicket(input); err != nil {
+		renderTicketPage(c, selectedProjectID, err.Error(), "ticketCreateModal", &input)
+		return
+	}
+
+	redirectURL := "/tickets"
+	if selectedProjectID > 0 {
+		redirectURL += "?project_id=" + strconv.Itoa(selectedProjectID)
+	}
+	c.Redirect(http.StatusSeeOther, redirectURL)
+}
+
+func renderTicketPage(c *gin.Context, selectedProjectID int, message, openModal string, ticketOld *models.RoadmapTicketCreateInput) {
+	svc := managementService()
 
 	tickets, err := svc.GetTickets(selectedProjectID)
 	if err != nil {
@@ -43,12 +81,30 @@ func TicketIndex(c *gin.Context) {
 		return
 	}
 
+	epicOptions, err := svc.GetRoadmapEpicOptions()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	userRepo := &repositories.UserRepository{DB: config.DB}
+	userOptions, err := userRepo.GetAll()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	Render(c, "tickets.html", gin.H{
 		"Title":   "Tickets",
 		"Page":    "ticket",
 		"Tickets": tickets,
 		"Columns": columns,
 
+		"TicketError":        message,
+		"OpenModal":          openModal,
+		"TicketCreateOld":    ticketOld,
+		"UserOptions":        userOptions,
+		"EpicOptions":        epicOptions,
 		"ProjectOptions":    projectOptions,
 		"SelectedProjectID": selectedProjectID,
 		"ProjectLabel":      resolveRoadmapProjectLabel(projectOptions, selectedProjectID),

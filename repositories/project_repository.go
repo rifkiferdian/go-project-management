@@ -199,8 +199,65 @@ func (r *ProjectRepository) Update(params models.ProjectUpdateInput) error {
 }
 
 func (r *ProjectRepository) Delete(id int) error {
-	_, err := r.DB.Exec(`UPDATE projects SET deleted_at = NOW(), updated_at = NOW() WHERE id = ?`, id)
-	return err
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	if err := ensureExists(tx, `SELECT COUNT(1) FROM projects WHERE id = ? AND deleted_at IS NULL`, id); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	steps := []struct {
+		query string
+		args  []interface{}
+	}{
+		{query: `DELETE FROM ticket_subscribers WHERE ticket_id IN (SELECT id FROM tickets WHERE project_id = ?)`, args: []interface{}{id}},
+		{query: `DELETE FROM ticket_hours WHERE ticket_id IN (SELECT id FROM tickets WHERE project_id = ?)`, args: []interface{}{id}},
+		{query: `DELETE FROM ticket_comments WHERE ticket_id IN (SELECT id FROM tickets WHERE project_id = ?)`, args: []interface{}{id}},
+		{query: `DELETE FROM ticket_attachments WHERE ticket_id IN (SELECT id FROM tickets WHERE project_id = ?)`, args: []interface{}{id}},
+		{query: `DELETE FROM ticket_activities WHERE ticket_id IN (SELECT id FROM tickets WHERE project_id = ?)`, args: []interface{}{id}},
+		{
+			query: `DELETE FROM ticket_relations
+				WHERE ticket_id IN (SELECT id FROM tickets WHERE project_id = ?)
+					OR relation_id IN (SELECT id FROM tickets WHERE project_id = ?)`,
+			args: []interface{}{id, id},
+		},
+		{query: `DELETE FROM tickets WHERE project_id = ?`, args: []interface{}{id}},
+		{query: `DELETE FROM sprints WHERE project_id = ?`, args: []interface{}{id}},
+		{query: `UPDATE epics SET parent_id = NULL WHERE project_id = ?`, args: []interface{}{id}},
+		{query: `DELETE FROM epics WHERE project_id = ?`, args: []interface{}{id}},
+		{query: `DELETE FROM ticket_statuses WHERE project_id = ?`, args: []interface{}{id}},
+		{query: `DELETE FROM project_users WHERE project_id = ?`, args: []interface{}{id}},
+		{query: `DELETE FROM project_favorites WHERE project_id = ?`, args: []interface{}{id}},
+		{query: `DELETE FROM project_divisions WHERE project_id = ?`, args: []interface{}{id}},
+	}
+
+	for _, step := range steps {
+		if _, err := tx.Exec(step.query, step.args...); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	result, err := tx.Exec(`DELETE FROM projects WHERE id = ?`, id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	if affectedRows == 0 {
+		tx.Rollback()
+		return sql.ErrNoRows
+	}
+
+	return tx.Commit()
 }
 
 func (r *ProjectRepository) GetStatusOptions() ([]models.ProjectStatusOption, error) {
