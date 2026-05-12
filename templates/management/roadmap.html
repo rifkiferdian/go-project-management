@@ -141,6 +141,21 @@
             .gchart-canvas {
                 position: relative;
             }
+            .gcurrent-marker {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                width: 2px;
+                background: #7c3aed;
+                z-index: 20;
+                pointer-events: none;
+                opacity: 0;
+                transform: translateX(-1px);
+                transition: opacity 0.2s ease;
+            }
+            .gcurrent-marker.is-visible {
+                opacity: 1;
+            }
             .gchart-row {
                 position: relative;
                 height: 32px;
@@ -290,6 +305,7 @@
                                     <div class="gmainright">
                                         <div id="roadmap-scroll" class="gchart-scroll">
                                             <div class="gchart-canvas" style="width: {{ .TimelineWidth }}px;">
+                                                <div id="roadmap-current-marker" class="gcurrent-marker" aria-hidden="true"></div>
                                                 <table class="gcharttableh" style="width: {{ .TimelineWidth }}px;">
                                                     <tbody>
                                                         <tr>
@@ -460,7 +476,9 @@
                 var projectFilter = document.getElementById('roadmap-project-filter');
                 var filterForm = document.getElementById('roadmap-filter-form');
                 var roadmapScroll = document.getElementById('roadmap-scroll');
+                var roadmapCanvas = document.querySelector('.gchart-canvas');
                 var firstTimelineBar = document.querySelector('[data-roadmap-bar]');
+                var currentMarker = document.getElementById('roadmap-current-marker');
 
                 function openModal(modalId) {
                     var modal = document.getElementById(modalId);
@@ -498,6 +516,22 @@
                     roadmapScroll.scrollLeft = Math.max(0, firstBarLeft - columnWidth);
                 }
 
+                function placeCurrentMarker() {
+                    if (!roadmapCanvas || !currentMarker) return;
+                    var markerLeft = {{ .CurrentMarkerLeft }};
+                    var markerWidth = {{ .CurrentMarkerWidth }};
+                    var canvasWidth = roadmapCanvas.offsetWidth;
+
+                    if (canvasWidth <= 0) return;
+
+                    var lineX = markerLeft + (markerWidth / 2);
+                    if (lineX < 0) lineX = 0;
+                    if (lineX > canvasWidth) lineX = canvasWidth;
+
+                    currentMarker.style.left = lineX + 'px';
+                    currentMarker.classList.add('is-visible');
+                }
+
                 toggleButtons.forEach(function (button) {
                     button.addEventListener('click', function () {
                         if (sidebar.classList.contains('-translate-x-full')) openSidebar(); else closeSidebar();
@@ -523,6 +557,7 @@
                     });
                 });
                 window.requestAnimationFrame(alignRoadmapScrollToData);
+                window.requestAnimationFrame(placeCurrentMarker);
                 {{ if .OpenModal }}openModal('{{ .OpenModal }}');{{ end }}
             });
         </script>

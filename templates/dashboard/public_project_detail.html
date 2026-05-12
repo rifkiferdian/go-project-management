@@ -77,6 +77,19 @@
             .gminorheading div { height: 36px; line-height: 36px; font-size: 12px; }
             .gchart-scroll { overflow-x: auto; overflow-y: hidden; }
             .gchart-canvas { position: relative; }
+            .gcurrent-marker {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                width: 2px;
+                background: #7c3aed;
+                z-index: 20;
+                pointer-events: none;
+                opacity: 0;
+                transform: translateX(-1px);
+                transition: opacity 0.2s ease;
+            }
+            .gcurrent-marker.is-visible { opacity: 1; }
             .gchart-row { position: relative; height: 32px; border-bottom: 1px solid #eef2f7; background-color: #fff; }
             .gchart-grid { position: absolute; inset: 0; background-repeat: repeat; background-position: left top; }
             .gtaskbarcontainer { position: absolute; top: 50%; transform: translateY(-50%); height: 24px; }
@@ -274,6 +287,7 @@
                                     <div class="gmainright">
                                         <div class="gchart-scroll">
                                             <div class="gchart-canvas" style="width: {{ .TimelineWidth }}px;">
+                                                <div id="project-roadmap-current-marker" class="gcurrent-marker" aria-hidden="true"></div>
                                                 <table class="gcharttableh" style="width: {{ .TimelineWidth }}px;">
                                                     <tbody>
                                                         <tr>
@@ -357,6 +371,26 @@
         </div>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
+                var roadmapCanvas = document.querySelector('.gchart-canvas');
+                var currentMarker = document.getElementById('project-roadmap-current-marker');
+
+                function placeCurrentMarker() {
+                    if (!roadmapCanvas || !currentMarker) return;
+                    var markerLeft = {{ .CurrentMarkerLeft }};
+                    var markerWidth = {{ .CurrentMarkerWidth }};
+                    var canvasWidth = roadmapCanvas.offsetWidth;
+
+                    if (canvasWidth <= 0) return;
+
+                    var lineX = markerLeft + (markerWidth / 2);
+                    if (lineX < 0) lineX = 0;
+                    if (lineX > canvasWidth) lineX = canvasWidth;
+
+                    currentMarker.style.left = lineX + 'px';
+                    currentMarker.classList.add('is-visible');
+                }
+
+                window.requestAnimationFrame(placeCurrentMarker);
                 if (typeof window.ApexCharts !== 'function') return;
 
                 var chartEls = document.querySelectorAll('[data-todo-progress-chart]');

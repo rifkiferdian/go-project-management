@@ -397,7 +397,7 @@ func renderRoadMapPage(c *gin.Context, message, openModal string, epicOld interf
 
 	totalProjects := len(projectOptions)
 	filteredEpics, filteredTickets := filterRoadmapByProject(epics, tickets, selectedProjectID)
-	weeks, rows, timelineWidth, currentMarkerLeft, currentMarkerWidth, columnWidth := svc.BuildRoadmapTimeline(filteredEpics, filteredTickets, time.Now(), format)
+	weeks, rows, timelineWidth, currentMarkerLeft, currentMarkerWidth, columnWidth := svc.BuildRoadmapTimeline(filteredEpics, filteredTickets, roadmapNow(), format)
 	yearGroups := buildRoadmapYearGroups(weeks, columnWidth)
 	projectLabel := resolveRoadmapProjectLabel(projectOptions, selectedProjectID)
 

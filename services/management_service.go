@@ -455,20 +455,24 @@ func progressLabel(done, total int) string {
 func timelineBounds(epics []models.RoadmapEpic, tickets []models.RoadmapTicket, now time.Time, format string) (time.Time, time.Time) {
 	var starts []time.Time
 	var ends []time.Time
+	location := now.Location()
+	if location == nil {
+		location = time.UTC
+	}
 
 	for _, epic := range epics {
-		if start, err := time.Parse("2006-01-02", epic.StartsAtISO); err == nil {
+		if start, err := time.ParseInLocation("2006-01-02", epic.StartsAtISO, location); err == nil {
 			starts = append(starts, start)
 		}
-		if end, err := time.Parse("2006-01-02", epic.EndsAtISO); err == nil {
+		if end, err := time.ParseInLocation("2006-01-02", epic.EndsAtISO, location); err == nil {
 			ends = append(ends, end)
 		}
 	}
 	for _, ticket := range tickets {
-		if start, err := time.Parse("2006-01-02", ticket.StartsAtISO); err == nil {
+		if start, err := time.ParseInLocation("2006-01-02", ticket.StartsAtISO, location); err == nil {
 			starts = append(starts, start)
 		}
-		if end, err := time.Parse("2006-01-02", ticket.EndsAtISO); err == nil {
+		if end, err := time.ParseInLocation("2006-01-02", ticket.EndsAtISO, location); err == nil {
 			ends = append(ends, end)
 		}
 	}
@@ -526,8 +530,12 @@ func buildRoadmapColumns(start, end time.Time, format string) ([]models.RoadmapW
 }
 
 func makeTimelineRow(name, resource string, progress int, progressLabel, startLabel, endLabel, startISO, endISO, barColor, accentColor string, isChild bool, rangeStart time.Time, format string, columnWidth int, showBar bool, rowTone string, projectName string) models.RoadmapTimelineRow {
-	start, errStart := time.Parse("2006-01-02", startISO)
-	end, errEnd := time.Parse("2006-01-02", endISO)
+	location := rangeStart.Location()
+	if location == nil {
+		location = time.UTC
+	}
+	start, errStart := time.ParseInLocation("2006-01-02", startISO, location)
+	end, errEnd := time.ParseInLocation("2006-01-02", endISO, location)
 	styleClass := "ggroupitem"
 	if isChild {
 		styleClass = "glineitem"
@@ -666,7 +674,10 @@ func endOfMonth(value time.Time) time.Time {
 }
 
 func daysBetween(start, end time.Time) int {
-	return int(startOfDay(end).Sub(startOfDay(start)).Hours() / 24)
+	// Compare by calendar date only (Y-M-D) to avoid timezone offset drift.
+	startDate := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, time.UTC)
+	return int(endDate.Sub(startDate).Hours() / 24)
 }
 
 func monthsBetween(start, end time.Time) int {

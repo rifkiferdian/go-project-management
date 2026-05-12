@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"gobase-app/config"
 	"gobase-app/models"
@@ -213,7 +212,7 @@ func PublicProjectDetailPage(c *gin.Context) {
 	}
 
 	filteredEpics, filteredTickets := filterRoadmapByProject(epics, tickets, projectID)
-	weeks, rows, timelineWidth, currentMarkerLeft, currentMarkerWidth, columnWidth := svc.BuildRoadmapTimeline(filteredEpics, filteredTickets, time.Now(), format)
+	weeks, rows, timelineWidth, currentMarkerLeft, currentMarkerWidth, columnWidth := svc.BuildRoadmapTimeline(filteredEpics, filteredTickets, roadmapNow(), format)
 	yearGroups := buildRoadmapYearGroups(weeks, columnWidth)
 	recentTicketActivities, err := getRecentTicketActivitiesByProject(projectID, 0)
 	if err != nil {
