@@ -381,6 +381,7 @@ func getProjectKanbanProjects() ([]models.Project, error) {
 				p.id,
 				p.name,
 				COALESCE(NULLIF(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), ''), '-') AS request_division,
+				COALESCE(owner.name, '-') AS owner_name,
 				COALESCE(dev.name, '-') AS developer_name,
 				COALESCE(pp.name, '-') AS priority_name,
 				COALESCE(NULLIF(TRIM(pp.color), ''), '#cecece') AS priority_color,
@@ -390,6 +391,7 @@ func getProjectKanbanProjects() ([]models.Project, error) {
 				p.created_at
 			FROM projects p
 			JOIN project_statuses ps ON ps.id = p.status_id
+			LEFT JOIN users owner ON owner.id = p.owner_id AND owner.deleted_at IS NULL
 			LEFT JOIN users dev ON dev.id = p.developer_id AND dev.deleted_at IS NULL
 			LEFT JOIN project_priorities pp ON pp.id = p.priority_id AND pp.deleted_at IS NULL
 			LEFT JOIN project_divisions pd ON pd.project_id = p.id
@@ -397,7 +399,7 @@ func getProjectKanbanProjects() ([]models.Project, error) {
 			WHERE p.deleted_at IS NULL
 				AND ps.deleted_at IS NULL
 			GROUP BY
-				p.id, p.name, dev.name, pp.name, pp.color, ps.id, ps.name, ps.color, p.created_at
+				p.id, p.name, owner.name, dev.name, pp.name, pp.color, ps.id, ps.name, ps.color, p.created_at
 			ORDER BY p.created_at DESC, p.id DESC
 		`)
 	if err != nil {
@@ -416,6 +418,7 @@ func getProjectKanbanProjects() ([]models.Project, error) {
 			&project.ID,
 			&project.Name,
 			&project.RequestDivision,
+			&project.OwnerName,
 			&project.DeveloperName,
 			&project.PriorityName,
 			&project.PriorityColor,

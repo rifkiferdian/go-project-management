@@ -236,9 +236,9 @@
                         </div>
                         <div class="space-y-4">
                             <div>
-                                <label for="owner_id" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Owner</label>
+                                <label for="owner_id" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Pembuat</label>
                                 <select id="owner_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" name="owner_id" required>
-                                    <option value="">Pilih owner</option>
+                                    <option value="">Pilih pembuat</option>
                                     {{ range .users }}
                                     <option value="{{ .ID }}" {{ with $.Old }}{{ if eq .OwnerID $.ID }}selected{{ end }}{{ end }}>{{ .Name }} ({{ .Email }})</option>
                                     {{ end }}
@@ -329,9 +329,9 @@
                         </div>
                         <div class="space-y-4">
                             <div>
-                                <label for="edit_owner_id" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Owner</label>
+                                <label for="edit_owner_id" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Requester</label>
                                 <select id="edit_owner_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" name="owner_id" required>
-                                    <option value="">Pilih owner</option>
+                                    <option value="">Pilih Requester</option>
                                     {{ range .users }}
                                     <option value="{{ .ID }}">{{ .Name }} ({{ .Email }})</option>
                                     {{ end }}
