@@ -519,28 +519,28 @@ func buildRoadmapColumns(start, end time.Time, format string) ([]models.RoadmapW
 		for cursor := start; !cursor.After(end); cursor = cursor.AddDate(0, 0, 1) {
 			columns = append(columns, models.RoadmapWeek{
 				YearLabel: cursor.Format("2006"),
-				DateLabel: cursor.Format("02 Jan"),
+				DateLabel: cursor.Format("02 Jan 06"),
 			})
 		}
-		return columns, 62
+		return columns, 78
 	case "month":
 		var columns []models.RoadmapWeek
 		for cursor := firstOfMonth(start); !cursor.After(end); cursor = cursor.AddDate(0, 1, 0) {
 			columns = append(columns, models.RoadmapWeek{
 				YearLabel: cursor.Format("2006"),
-				DateLabel: cursor.Format("Jan"),
+				DateLabel: cursor.Format("Jan 06"),
 			})
 		}
-		return columns, 88
+		return columns, 102
 	default:
 		var columns []models.RoadmapWeek
 		for cursor := start; !cursor.After(end); cursor = cursor.AddDate(0, 0, 7) {
 			columns = append(columns, models.RoadmapWeek{
 				YearLabel: cursor.Format("2006"),
-				DateLabel: cursor.Format("02 Jan"),
+				DateLabel: cursor.Format("02 Jan 06"),
 			})
 		}
-		return columns, 55
+		return columns, 72
 	}
 }
 
