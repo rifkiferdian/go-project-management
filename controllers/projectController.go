@@ -195,7 +195,7 @@ func renderProjectPage(c *gin.Context, projectService *services.ProjectService, 
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-	developerUsers, err := userRepo.GetByDivisionName("IT")
+	developerUsers, err := userRepo.GetByDivisionName("Audit & Sistem (IT)")
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
