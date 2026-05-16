@@ -120,12 +120,12 @@ func (s *ProjectService) validateCreateInput(input models.ProjectCreateInput) (m
 		return input, fmt.Errorf("divisi requester tidak ditemukan: %s", strings.Join(missingDivisions, ", "))
 	}
 
-	isITDeveloper, err := s.Repo.IsUserInDivision(input.DeveloperID, "IT")
+	isITDeveloper, err := s.Repo.IsUserInDivision(input.DeveloperID, "Audit & Sistem (IT)")
 	if err != nil {
 		return input, err
 	}
 	if !isITDeveloper {
-		return input, errors.New("developer harus user dari divisi IT")
+		return input, errors.New("developer harus user dari divisi Audit & Sistem (IT)")
 	}
 
 	input.Name = name
@@ -193,12 +193,12 @@ func (s *ProjectService) validateUpdateInput(input models.ProjectUpdateInput) (m
 		return input, fmt.Errorf("divisi requester tidak ditemukan: %s", strings.Join(missingDivisions, ", "))
 	}
 
-	isITDeveloper, err := s.Repo.IsUserInDivision(input.DeveloperID, "IT")
+	isITDeveloper, err := s.Repo.IsUserInDivision(input.DeveloperID, "Audit & Sistem (IT)")
 	if err != nil {
 		return input, err
 	}
 	if !isITDeveloper {
-		return input, errors.New("developer harus user dari divisi IT")
+		return input, errors.New("developer harus user dari divisi Audit & Sistem (IT)")
 	}
 
 	input.Name = name
