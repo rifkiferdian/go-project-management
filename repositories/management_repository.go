@@ -626,6 +626,26 @@ func (r *ManagementRepository) UpdateTicketContent(ticketID int, content string)
 	return nil
 }
 
+func (r *ManagementRepository) DeleteTicket(ticketID int) error {
+	result, err := r.DB.Exec(`
+		UPDATE tickets
+		SET deleted_at = NOW(), updated_at = NOW()
+		WHERE id = ? AND deleted_at IS NULL
+	`, ticketID)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected <= 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func (r *ManagementRepository) GetTicketComments(ticketID int) ([]models.TicketCommentItem, error) {
 	rows, err := r.DB.Query(`
 		SELECT

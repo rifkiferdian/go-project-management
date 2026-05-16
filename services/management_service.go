@@ -193,6 +193,21 @@ func (s *ManagementService) DeleteTicketTodo(ticketID, todoID, userID int) error
 	return nil
 }
 
+func (s *ManagementService) DeleteTicket(ticketID int) error {
+	if ticketID <= 0 {
+		return errors.New("ticket tidak valid")
+	}
+
+	if err := s.Repo.DeleteTicket(ticketID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("ticket tidak ditemukan")
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (s *ManagementService) UpdateTicket(input models.TicketUpdateInput, actorUserID int) (models.TicketUpdateInput, error) {
 	input.Name = strings.TrimSpace(input.Name)
 	input.Content = strings.TrimSpace(input.Content)

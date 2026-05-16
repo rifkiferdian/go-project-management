@@ -100,11 +100,11 @@ func renderTicketPage(c *gin.Context, selectedProjectID int, message, openModal 
 		"Tickets": tickets,
 		"Columns": columns,
 
-		"TicketError":        message,
-		"OpenModal":          openModal,
-		"TicketCreateOld":    ticketOld,
-		"UserOptions":        userOptions,
-		"EpicOptions":        epicOptions,
+		"TicketError":       message,
+		"OpenModal":         openModal,
+		"TicketCreateOld":   ticketOld,
+		"UserOptions":       userOptions,
+		"EpicOptions":       epicOptions,
 		"ProjectOptions":    projectOptions,
 		"SelectedProjectID": selectedProjectID,
 		"ProjectLabel":      resolveRoadmapProjectLabel(projectOptions, selectedProjectID),
@@ -358,6 +358,26 @@ func TicketUpdate(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(input.ID))
+}
+
+func TicketDelete(c *gin.Context) {
+	id, err := strconv.Atoi(strings.TrimSpace(c.Param("id")))
+	if err != nil || id <= 0 {
+		c.String(http.StatusBadRequest, "ticket tidak valid")
+		return
+	}
+
+	if err := managementService().DeleteTicket(id); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	selectedProjectID, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("project_id", "0")))
+	redirectURL := "/tickets"
+	if selectedProjectID > 0 {
+		redirectURL += "?project_id=" + strconv.Itoa(selectedProjectID)
+	}
+	c.Redirect(http.StatusSeeOther, redirectURL)
 }
 
 func BoardIndex(c *gin.Context) {

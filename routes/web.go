@@ -35,6 +35,7 @@ func RegisterWebRoutes(r *gin.Engine) {
 		auth.POST("/tickets/:id/todos/:todoId/update", middleware.RequirePermission("Update ticket"), controllers.TicketTodoUpdate)
 		auth.POST("/tickets/:id/todos/:todoId/delete", middleware.RequirePermission("Update ticket"), controllers.TicketTodoDelete)
 		auth.POST("/tickets/update", middleware.RequirePermission("Update ticket"), controllers.TicketUpdate)
+		auth.GET("/tickets/delete/:id", middleware.RequirePermission("Delete ticket"), controllers.TicketDelete)
 		auth.GET("/board", middleware.RequirePermission("List tickets"), controllers.BoardIndex)
 		auth.GET("/road-map", middleware.RequirePermission("List sprints"), controllers.RoadMapIndex)
 		auth.POST("/road-map/epics", middleware.RequirePermission("List sprints"), controllers.RoadMapEpicStore)
