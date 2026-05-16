@@ -314,16 +314,7 @@ func getRequestQueueProjects(limit int) ([]models.DashboardProjectListItem, erro
 		LEFT JOIN divisions d ON d.id = pd.division_id AND d.deleted_at IS NULL
 		WHERE p.deleted_at IS NULL
 			AND ps.deleted_at IS NULL
-			AND (
-				LOWER(TRIM(COALESCE(ps.name, ''))) IN ('request received', 'menunggu', 'antrian', 'queue', 'waiting', 'backlog')
-				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE 'request%'
-				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '% request%'
-				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '%menunggu%'
-				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '%antrian%'
-				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '%queue%'
-				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '%waiting%'
-				OR LOWER(TRIM(COALESCE(ps.name, ''))) LIKE '%backlog%'
-			)
+			AND LOWER(TRIM(COALESCE(ps.name, ''))) = 'request received'
 		GROUP BY p.id, p.name, ps.name, ps.color, p.created_at
 		ORDER BY p.created_at ASC, p.id ASC
 		LIMIT ?

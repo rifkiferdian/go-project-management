@@ -81,6 +81,12 @@ func PublicHomePage(c *gin.Context) {
 		return
 	}
 
+	requestQueueProjects, err := getRequestQueueProjects(5)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	recentTicketActivities, err := getRecentTicketActivities()
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
@@ -98,6 +104,7 @@ func PublicHomePage(c *gin.Context) {
 		"StatusChartTotal":            statusChartTotal,
 		"DivisionChartItems":          divisionChartItems,
 		"UrgentProjects":              urgentProjects,
+		"RequestQueueProjects":        requestQueueProjects,
 		"KanbanStatuses":              kanbanStatuses,
 		"KanbanProjects":              kanbanProjects,
 		"RecentTicketActivities":      recentTicketActivities,
