@@ -1,0 +1,599 @@
+package controllers
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+	"math/rand"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	"gobase-app/config"
+	"gobase-app/models"
+
+	"github.com/gin-gonic/gin"
+)
+
+func PublicProjectRequestPage(c *gin.Context) {
+	success := strings.TrimSpace(c.Query("success")) == "1"
+	renderPublicProjectRequestPage(c, http.StatusOK, "", success, map[string]string{})
+}
+
+func PublicProjectRequestListPage(c *gin.Context) {
+	keyword := strings.TrimSpace(c.Query("q"))
+
+	rows, err := getPublicProjectRequestRows(keyword)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	Render(c, "public_project_request_list.html", gin.H{
+		"Title":   "Public Project Requests",
+		"Rows":    rows,
+		"Keyword": keyword,
+	})
+}
+
+func PublicProjectRequestStore(c *gin.Context) {
+	form := map[string]string{
+		"project_name":          strings.TrimSpace(c.PostForm("project_name")),
+		"project_description":   strings.TrimSpace(c.PostForm("project_description")),
+		"business_goal":         strings.TrimSpace(c.PostForm("business_goal")),
+		"request_division_id":   strings.TrimSpace(c.PostForm("request_division_id")),
+		"requester_name":        strings.TrimSpace(c.PostForm("requester_name")),
+		"requester_employee_id": strings.TrimSpace(c.PostForm("requester_employee_id")),
+		"approval_flow_id":      strings.TrimSpace(c.PostForm("approval_flow_id")),
+	}
+
+	requestDivisionID, err := strconv.Atoi(form["request_division_id"])
+	if err != nil || requestDivisionID <= 0 {
+		renderPublicProjectRequestPage(c, http.StatusBadRequest, "Divisi requester wajib dipilih", false, form)
+		return
+	}
+
+	approvalFlowID, err := strconv.Atoi(form["approval_flow_id"])
+	if err != nil || approvalFlowID <= 0 {
+		renderPublicProjectRequestPage(c, http.StatusBadRequest, "Approval flow wajib dipilih", false, form)
+		return
+	}
+
+	file, err := c.FormFile("supporting_document")
+	if err != nil {
+		renderPublicProjectRequestPage(c, http.StatusBadRequest, "Dokumen pendukung wajib diupload (PDF/Image)", false, form)
+		return
+	}
+	if err := validateSupportingDocumentFile(file); err != nil {
+		renderPublicProjectRequestPage(c, http.StatusBadRequest, err.Error(), false, form)
+		return
+	}
+
+	if err := validatePublicProjectRequestForm(form); err != nil {
+		renderPublicProjectRequestPage(c, http.StatusBadRequest, err.Error(), false, form)
+		return
+	}
+
+	if err := storePublicProjectRequest(c, form, requestDivisionID, approvalFlowID, file); err != nil {
+		renderPublicProjectRequestPage(c, http.StatusInternalServerError, err.Error(), false, form)
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/project-requests/new?success=1")
+}
+
+func renderPublicProjectRequestPage(c *gin.Context, status int, message string, success bool, form map[string]string) {
+	divisions, err := getPublicDivisionOptions()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	flows, err := getPublicApprovalFlowOptions()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	form = normalizePublicProjectRequestForm(form)
+
+	data := gin.H{
+		"Title":     "Public Project Request",
+		"Divisions": divisions,
+		"Flows":     flows,
+		"Form":      form,
+		"Success":   success,
+	}
+
+	if strings.TrimSpace(message) != "" {
+		data["Error"] = message
+	}
+
+	c.HTML(status, "public_project_request.html", data)
+}
+
+type publicProjectRequestListItem struct {
+	RequestNo          string
+	ProjectName        string
+	ProjectDescription string
+	BusinessGoal       string
+	RequesterName      string
+	RequesterEmployee  string
+	DivisionName       string
+	TicketPrefix       string
+	Status             string
+	StatusLabel        string
+	CreatedAtDisplay   string
+	HasAttachment      bool
+	AttachmentPath     string
+	AttachmentName     string
+}
+
+func normalizePublicProjectRequestForm(form map[string]string) map[string]string {
+	result := map[string]string{
+		"project_name":          "",
+		"project_description":   "",
+		"business_goal":         "",
+		"request_division_id":   "",
+		"requester_name":        "",
+		"requester_employee_id": "",
+		"approval_flow_id":      "",
+	}
+	for key, val := range form {
+		result[key] = val
+	}
+	return result
+}
+
+func getPublicDivisionOptions() ([]models.DivisionOption, error) {
+	rows, err := config.DB.Query(`
+		SELECT id, name
+		FROM divisions
+		WHERE deleted_at IS NULL
+		ORDER BY name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var options []models.DivisionOption
+	for rows.Next() {
+		var item models.DivisionOption
+		if err := rows.Scan(&item.ID, &item.Name); err != nil {
+			return nil, err
+		}
+		options = append(options, item)
+	}
+
+	return options, rows.Err()
+}
+
+func getPublicApprovalFlowOptions() ([]models.ApprovalFlowOption, error) {
+	rows, err := config.DB.Query(`
+		SELECT id, flow_code, flow_name, is_active
+		FROM approval_flows
+		WHERE entity_type = 'project_request'
+			AND is_active = 1
+		ORDER BY flow_name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var options []models.ApprovalFlowOption
+	for rows.Next() {
+		var item models.ApprovalFlowOption
+		if err := rows.Scan(&item.ID, &item.FlowCode, &item.FlowName, &item.IsActive); err != nil {
+			return nil, err
+		}
+		options = append(options, item)
+	}
+
+	return options, rows.Err()
+}
+
+func getPublicProjectRequestRows(keyword string) ([]publicProjectRequestListItem, error) {
+	query := `
+		SELECT
+			pr.request_no,
+			pr.project_name,
+			COALESCE(pr.project_description, '') AS project_description,
+			COALESCE(pr.business_goal, '') AS business_goal,
+			pr.requester_name,
+			COALESCE(pr.requester_employee_id, '-') AS requester_employee_id,
+			COALESCE(d.name, '-') AS division_name,
+			COALESCE(pr.requested_ticket_prefix, '-') AS requested_ticket_prefix,
+			pr.status,
+			pr.created_at,
+			CASE WHEN COUNT(pra.id) > 0 THEN 1 ELSE 0 END AS has_attachment,
+			COALESCE(MAX(pra.file_path), '') AS attachment_path,
+			COALESCE(MAX(pra.original_name), '') AS attachment_name
+		FROM project_requests pr
+		LEFT JOIN divisions d ON d.id = pr.request_division_id
+		LEFT JOIN project_request_attachments pra ON pra.project_request_id = pr.id
+	`
+	args := make([]interface{}, 0, 2)
+	if keyword != "" {
+		query += `
+		WHERE pr.request_no LIKE ?
+			OR pr.requester_employee_id LIKE ?
+		`
+		like := "%" + keyword + "%"
+		args = append(args, like, like)
+	}
+	query += `
+		GROUP BY
+			pr.id, pr.request_no, pr.project_name, pr.requester_name, pr.requester_employee_id,
+			pr.project_description, pr.business_goal, d.name, pr.requested_ticket_prefix, pr.status, pr.created_at
+		ORDER BY pr.created_at DESC
+		LIMIT 200
+	`
+
+	rows, err := config.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]publicProjectRequestListItem, 0)
+	for rows.Next() {
+		var (
+			item          publicProjectRequestListItem
+			createdAt     time.Time
+			hasAttachment int
+		)
+
+		if err := rows.Scan(
+			&item.RequestNo,
+			&item.ProjectName,
+			&item.ProjectDescription,
+			&item.BusinessGoal,
+			&item.RequesterName,
+			&item.RequesterEmployee,
+			&item.DivisionName,
+			&item.TicketPrefix,
+			&item.Status,
+			&createdAt,
+			&hasAttachment,
+			&item.AttachmentPath,
+			&item.AttachmentName,
+		); err != nil {
+			return nil, err
+		}
+
+		item.StatusLabel = humanizeProjectRequestStatus(item.Status)
+		item.CreatedAtDisplay = createdAt.Format("02 Jan 2006 15:04")
+		item.HasAttachment = hasAttachment > 0
+		result = append(result, item)
+	}
+
+	return result, rows.Err()
+}
+
+func humanizeProjectRequestStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "pending":
+		return "Pending Approval"
+	case "approved":
+		return "Approved"
+	case "rejected":
+		return "Rejected"
+	case "synced_to_project":
+		return "Masuk ke Project"
+	case "cancelled":
+		return "Cancelled"
+	default:
+		if status == "" {
+			return "-"
+		}
+		return status
+	}
+}
+
+func validatePublicProjectRequestForm(form map[string]string) error {
+	if form["project_name"] == "" {
+		return errors.New("Nama project wajib diisi")
+	}
+	if len(form["project_name"]) > 255 {
+		return errors.New("Nama project maksimal 255 karakter")
+	}
+	if form["requester_name"] == "" {
+		return errors.New("Nama requester wajib diisi")
+	}
+	if form["requester_employee_id"] == "" {
+		return errors.New("Employee ID requester wajib diisi")
+	}
+	return nil
+}
+
+func storePublicProjectRequest(c *gin.Context, form map[string]string, requestDivisionID, approvalFlowID int, file *multipart.FileHeader) error {
+	tx, err := config.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if ok, err := existsDivision(tx, requestDivisionID); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("Divisi dengan id %d tidak ditemukan", requestDivisionID)
+	}
+
+	if ok, err := existsActiveProjectRequestFlow(tx, approvalFlowID); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("Approval flow dengan id %d tidak aktif atau tidak ditemukan", approvalFlowID)
+	}
+
+	if hasSteps, err := hasActiveFlowSteps(tx, approvalFlowID); err != nil {
+		return err
+	} else if !hasSteps {
+		return errors.New("Approval flow belum memiliki step aktif")
+	}
+
+	requestNo := generateProjectRequestNo()
+	prefix, err := generateAutoTicketPrefix(tx)
+	if err != nil {
+		return err
+	}
+	systemEmail := buildSystemRequesterEmail(requestNo)
+
+	res, err := tx.Exec(`
+		INSERT INTO project_requests (
+			request_no,
+			project_name,
+			project_description,
+			business_goal,
+			request_division_id,
+			requested_ticket_prefix,
+			requester_name,
+			requester_email,
+			requester_phone,
+			requester_employee_id,
+			approval_flow_id,
+			current_step_order,
+			status,
+			created_at,
+			updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'pending', NOW(), NOW())
+	`, requestNo, form["project_name"], nullableString(form["project_description"]), nullableString(form["business_goal"]), requestDivisionID, prefix, form["requester_name"], systemEmail, nil, nullableString(form["requester_employee_id"]), approvalFlowID)
+	if err != nil {
+		return err
+	}
+
+	requestID, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	insertStepsResult, err := tx.Exec(`
+		INSERT INTO project_request_step_states (
+			project_request_id,
+			approval_flow_step_id,
+			step_order,
+			step_name,
+			approval_rule,
+			status,
+			created_at,
+			updated_at
+		)
+		SELECT
+			?,
+			s.id,
+			s.step_order,
+			s.step_name,
+			s.approval_rule,
+			'pending',
+			NOW(),
+			NOW()
+		FROM approval_flow_steps s
+		WHERE s.approval_flow_id = ?
+			AND s.is_active = 1
+		ORDER BY s.step_order ASC
+	`, requestID, approvalFlowID)
+	if err != nil {
+		return err
+	}
+
+	affected, err := insertStepsResult.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return errors.New("Gagal membuat snapshot step approval untuk request")
+	}
+
+	publicPath, storedName, err := storeProjectRequestSupportingDocument(c, requestID, file)
+	if err != nil {
+		return err
+	}
+	if err := createProjectRequestAttachment(tx, requestID, file, storedName, publicPath); err != nil {
+		_ = removeProjectRequestSupportingDocument(publicPath)
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func existsDivision(tx *sql.Tx, divisionID int) (bool, error) {
+	var count int
+	err := tx.QueryRow(`
+		SELECT COUNT(1)
+		FROM divisions
+		WHERE id = ? AND deleted_at IS NULL
+	`, divisionID).Scan(&count)
+	return count > 0, err
+}
+
+func existsActiveProjectRequestFlow(tx *sql.Tx, flowID int) (bool, error) {
+	var count int
+	err := tx.QueryRow(`
+		SELECT COUNT(1)
+		FROM approval_flows
+		WHERE id = ?
+			AND entity_type = 'project_request'
+			AND is_active = 1
+	`, flowID).Scan(&count)
+	return count > 0, err
+}
+
+func hasActiveFlowSteps(tx *sql.Tx, flowID int) (bool, error) {
+	var count int
+	err := tx.QueryRow(`
+		SELECT COUNT(1)
+		FROM approval_flow_steps
+		WHERE approval_flow_id = ?
+			AND is_active = 1
+	`, flowID).Scan(&count)
+	return count > 0, err
+}
+
+func isPrefixInUse(tx *sql.Tx, prefix string) (bool, error) {
+	var projectCount int
+	if err := tx.QueryRow(`
+		SELECT COUNT(1)
+		FROM projects
+		WHERE ticket_prefix = ?
+			AND deleted_at IS NULL
+	`, prefix).Scan(&projectCount); err != nil {
+		return false, err
+	}
+	if projectCount > 0 {
+		return true, nil
+	}
+
+	var requestCount int
+	if err := tx.QueryRow(`
+		SELECT COUNT(1)
+		FROM project_requests
+		WHERE requested_ticket_prefix = ?
+			AND status IN ('pending', 'approved', 'synced_to_project')
+	`, prefix).Scan(&requestCount); err != nil {
+		return false, err
+	}
+
+	return requestCount > 0, nil
+}
+
+func generateProjectRequestNo() string {
+	return fmt.Sprintf("PR-%s-%06d", time.Now().Format("20060102"), time.Now().UnixNano()%1000000)
+}
+
+func buildSystemRequesterEmail(requestNo string) string {
+	normalized := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(requestNo), " ", ""))
+	if normalized == "" {
+		normalized = fmt.Sprintf("request-%d", time.Now().Unix())
+	}
+	return normalized + "@public-request.local"
+}
+
+func generateAutoTicketPrefix(tx *sql.Tx) (string, error) {
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	for i := 0; i < 300; i++ {
+		candidate := make([]byte, 3)
+		for j := 0; j < 3; j++ {
+			candidate[j] = alphabet[rng.Intn(len(alphabet))]
+		}
+		prefix := string(candidate)
+
+		inUse, err := isPrefixInUse(tx, prefix)
+		if err != nil {
+			return "", err
+		}
+		if !inUse {
+			return prefix, nil
+		}
+	}
+
+	return "", errors.New("Gagal generate ticket prefix otomatis")
+}
+
+func nullableString(value string) interface{} {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return value
+}
+
+func validateSupportingDocumentFile(file *multipart.FileHeader) error {
+	if file == nil {
+		return errors.New("Dokumen pendukung tidak valid")
+	}
+	if file.Size <= 0 {
+		return errors.New("Dokumen pendukung kosong")
+	}
+	if file.Size > 10*1024*1024 {
+		return errors.New("Dokumen pendukung maksimal 10 MB")
+	}
+
+	ext := strings.ToLower(strings.TrimSpace(filepath.Ext(file.Filename)))
+	switch ext {
+	case ".pdf", ".png", ".jpg", ".jpeg", ".webp":
+	default:
+		return errors.New("Format dokumen hanya boleh PDF/JPG/JPEG/PNG/WEBP")
+	}
+
+	mimeType := strings.ToLower(strings.TrimSpace(file.Header.Get("Content-Type")))
+	if mimeType == "" {
+		return nil
+	}
+
+	if strings.HasPrefix(mimeType, "image/") || mimeType == "application/pdf" {
+		return nil
+	}
+
+	return errors.New("Content type dokumen harus PDF atau image")
+}
+
+func storeProjectRequestSupportingDocument(c *gin.Context, requestID int64, file *multipart.FileHeader) (string, string, error) {
+	uploadDir := filepath.Join("assets", "uploads", "project_requests", strconv.FormatInt(requestID, 10))
+	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
+		return "", "", err
+	}
+
+	safeName := safeUploadFilename(file.Filename)
+	storedName := fmt.Sprintf("%d-%s", time.Now().UnixNano(), safeName)
+	destination := filepath.Join(uploadDir, storedName)
+	if err := c.SaveUploadedFile(file, destination); err != nil {
+		return "", "", err
+	}
+
+	publicPath := "/assets/uploads/project_requests/" + strconv.FormatInt(requestID, 10) + "/" + storedName
+	return publicPath, storedName, nil
+}
+
+func createProjectRequestAttachment(tx *sql.Tx, requestID int64, file *multipart.FileHeader, storedName, publicPath string) error {
+	_, err := tx.Exec(`
+		INSERT INTO project_request_attachments (
+			project_request_id,
+			original_name,
+			file_name,
+			file_path,
+			file_size,
+			mime_type,
+			created_at,
+			updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+	`, requestID, filepath.Base(file.Filename), storedName, publicPath, file.Size, strings.TrimSpace(file.Header.Get("Content-Type")))
+	return err
+}
+
+func removeProjectRequestSupportingDocument(publicPath string) error {
+	publicPath = strings.TrimSpace(publicPath)
+	if publicPath == "" {
+		return nil
+	}
+
+	relative := strings.TrimPrefix(publicPath, "/")
+	relative = filepath.FromSlash(relative)
+	return os.Remove(relative)
+}
