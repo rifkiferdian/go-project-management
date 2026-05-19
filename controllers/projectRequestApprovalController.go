@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"gobase-app/config"
+	"gobase-app/models"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -106,6 +107,7 @@ func ProjectRequestManageIndex(c *gin.Context) {
 		"Title":   "Project Requests",
 		"Page":    "projectRequestManage",
 		"Rows":    rows,
+		"IsAdmin": currentUserHasRole(c, "admin"),
 		"Keyword": keyword,
 		"Error":   strings.TrimSpace(c.Query("error")),
 		"Success": strings.TrimSpace(c.Query("success")),
@@ -201,6 +203,11 @@ func ProjectRequestReject(c *gin.Context) {
 }
 
 func ProjectRequestDelete(c *gin.Context) {
+	if !currentUserHasRole(c, "admin") {
+		redirectProjectRequestManage(c, "Hanya role admin yang bisa menghapus project request", "")
+		return
+	}
+
 	requestID, err := strconv.ParseInt(strings.TrimSpace(c.Param("id")), 10, 64)
 	if err != nil || requestID <= 0 {
 		redirectProjectRequestManage(c, "Invalid project request id", "")
@@ -1250,6 +1257,51 @@ func normalizeSessionID(value interface{}) int {
 	default:
 		return 0
 	}
+}
+
+func currentUserHasRole(c *gin.Context, roleName string) bool {
+	roleName = strings.ToLower(strings.TrimSpace(roleName))
+	if roleName == "" {
+		return false
+	}
+
+	session := sessions.Default(c)
+	user := session.Get("user")
+	if user == nil {
+		return false
+	}
+
+	var rawRole string
+	switch val := user.(type) {
+	case models.SessionUser:
+		rawRole = val.Role
+	case map[string]interface{}:
+		if role, ok := val["role"].(string); ok {
+			rawRole = role
+		}
+	case gin.H:
+		if role, ok := val["role"].(string); ok {
+			rawRole = role
+		}
+	default:
+		// fallback for models.SessionUser or other struct-like payload via fmt
+		if role, ok := session.Get("role").(string); ok {
+			rawRole = role
+		}
+	}
+
+	rawRole = strings.TrimSpace(rawRole)
+	if rawRole == "" {
+		return false
+	}
+
+	parts := strings.Split(rawRole, ",")
+	for _, part := range parts {
+		if strings.EqualFold(strings.TrimSpace(part), roleName) {
+			return true
+		}
+	}
+	return false
 }
 
 func humanizeApprovalRule(rule string) string {
