@@ -94,10 +94,12 @@
                                                     <td class="px-3 py-3 text-slate-600">{{ $project.TicketCount }}</td>
                                                     <td class="px-3 py-3">
                                                         <div class="flex flex-wrap items-center gap-2">
+                                                            {{ if index $.Permissions "Update project" }}
                                                             <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-developer-id="{{ $project.DeveloperID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
                                                             </button>
+                                                            {{ end }}
                                                             {{ if index $.Permissions "Delete project" }}
                                                             <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 btn-delete-project" data-url="/projects/delete/{{ $project.ID }}" data-project-name="{{ $project.Name }}">
                                                                 <i class="bx bx-trash text-sm"></i>
@@ -178,10 +180,12 @@
                                                             <span>{{ $project.TicketCount }} ticket</span>
                                                         </div>
                                                         <div class="mt-4 flex flex-wrap items-center gap-2">
+                                                            {{ if index $.Permissions "Update project" }}
                                                             <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-developer-id="{{ $project.DeveloperID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
                                                             </button>
+                                                            {{ end }}
                                                             {{ if index $.Permissions "Delete project" }}
                                                             <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 btn-delete-project" data-url="/projects/delete/{{ $project.ID }}" data-project-name="{{ $project.Name }}">
                                                                 <i class="bx bx-trash text-sm"></i>
