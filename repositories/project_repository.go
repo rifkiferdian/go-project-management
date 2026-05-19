@@ -18,8 +18,8 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 				p.id,
 				p.name,
 				COALESCE(p.description, '') AS description,
-				p.owner_id,
-				u.name AS owner_name,
+				COALESCE(p.owner_id, 0) AS owner_id,
+				COALESCE(u.name, '-') AS owner_name,
 				COALESCE(p.developer_id, 0) AS developer_id,
 				COALESCE(dev.name, '-') AS developer_name,
 				COALESCE(GROUP_CONCAT(DISTINCT d.id ORDER BY d.id SEPARATOR ','), '') AS request_division_ids_csv,
@@ -37,7 +37,7 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 			COUNT(DISTINCT t.id) AS ticket_count,
 			p.created_at
 			FROM projects p
-			JOIN users u ON u.id = p.owner_id
+			LEFT JOIN users u ON u.id = p.owner_id AND u.deleted_at IS NULL
 			LEFT JOIN users dev ON dev.id = p.developer_id AND dev.deleted_at IS NULL
 			JOIN project_statuses ps ON ps.id = p.status_id
 			LEFT JOIN project_priorities pp ON pp.id = p.priority_id AND pp.deleted_at IS NULL
@@ -107,7 +107,7 @@ func (r *ProjectRepository) GetByID(id int) (*models.Project, error) {
 				id,
 				name,
 				COALESCE(description, '') AS description,
-				owner_id,
+				COALESCE(owner_id, 0) AS owner_id,
 				COALESCE(developer_id, 0) AS developer_id,
 				status_id,
 				COALESCE(priority_id, 0) AS priority_id,
