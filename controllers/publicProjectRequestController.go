@@ -34,7 +34,7 @@ func PublicProjectRequestListPage(c *gin.Context) {
 	}
 
 	Render(c, "public_project_request_list.html", gin.H{
-		"Title":   "Public Project Requests",
+		"Title":   "Daftar Request Project Publik",
 		"Rows":    rows,
 		"Keyword": keyword,
 	})
@@ -102,7 +102,7 @@ func renderPublicProjectRequestPage(c *gin.Context, status int, message string, 
 	form = normalizePublicProjectRequestForm(form)
 
 	data := gin.H{
-		"Title":     "Public Project Request",
+		"Title":     "Request Project Publik",
 		"Divisions": divisions,
 		"Flows":     flows,
 		"Form":      form,
@@ -117,6 +117,7 @@ func renderPublicProjectRequestPage(c *gin.Context, status int, message string, 
 }
 
 type publicProjectRequestListItem struct {
+	ID                 int64
 	RequestNo          string
 	ProjectName        string
 	ProjectDescription string
@@ -131,6 +132,7 @@ type publicProjectRequestListItem struct {
 	HasAttachment      bool
 	AttachmentPath     string
 	AttachmentName     string
+	StepHistorySummary string
 }
 
 func normalizePublicProjectRequestForm(form map[string]string) map[string]string {
@@ -201,6 +203,7 @@ func getPublicApprovalFlowOptions() ([]models.ApprovalFlowOption, error) {
 func getPublicProjectRequestRows(keyword string) ([]publicProjectRequestListItem, error) {
 	query := `
 		SELECT
+			pr.id,
 			pr.request_no,
 			pr.project_name,
 			COALESCE(pr.project_description, '') AS project_description,
@@ -250,6 +253,7 @@ func getPublicProjectRequestRows(keyword string) ([]publicProjectRequestListItem
 		)
 
 		if err := rows.Scan(
+			&item.ID,
 			&item.RequestNo,
 			&item.ProjectName,
 			&item.ProjectDescription,
@@ -272,28 +276,133 @@ func getPublicProjectRequestRows(keyword string) ([]publicProjectRequestListItem
 		item.HasAttachment = hasAttachment > 0
 		result = append(result, item)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-	return result, rows.Err()
+	historyMap, err := getPublicStepHistorySummaryMap(result)
+	if err != nil {
+		return nil, err
+	}
+	for i := range result {
+		result[i].StepHistorySummary = historyMap[result[i].ID]
+	}
+
+	return result, nil
 }
 
 func humanizeProjectRequestStatus(status string) string {
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "pending":
-		return "Pending Approval"
+		return "Menunggu Persetujuan"
 	case "approved":
-		return "Approved"
+		return "Disetujui"
 	case "rejected":
-		return "Rejected"
+		return "Ditolak"
 	case "synced_to_project":
 		return "Masuk ke Project"
 	case "cancelled":
-		return "Cancelled"
+		return "Dibatalkan"
 	default:
 		if status == "" {
 			return "-"
 		}
 		return status
 	}
+}
+
+func getPublicStepHistorySummaryMap(rows []publicProjectRequestListItem) (map[int64]string, error) {
+	summary := make(map[int64]string, len(rows))
+	if len(rows) == 0 {
+		return summary, nil
+	}
+
+	ids := make([]int64, 0, len(rows))
+	for _, row := range rows {
+		if row.ID > 0 {
+			ids = append(ids, row.ID)
+		}
+	}
+	if len(ids) == 0 {
+		return summary, nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := `
+		SELECT
+			ss.project_request_id,
+			ss.step_order,
+			ss.step_name,
+			ss.status,
+			COALESCE(GROUP_CONCAT(
+				DISTINCT CONCAT(
+					COALESCE(u.name, CONCAT('User#', pa.approver_user_id)),
+					' (',
+					CASE
+						WHEN pa.decision = 'approved' THEN 'disetujui'
+						WHEN pa.decision = 'rejected' THEN 'ditolak'
+						ELSE pa.decision
+					END,
+					')'
+				)
+				ORDER BY pa.id SEPARATOR ', '
+			), '') AS decisions
+		FROM project_request_step_states ss
+		LEFT JOIN project_request_approvals pa
+			ON pa.project_request_id = ss.project_request_id
+			AND pa.approval_flow_step_id = ss.approval_flow_step_id
+		LEFT JOIN users u ON u.id = pa.approver_user_id
+		WHERE ss.project_request_id IN (` + strings.Join(placeholders, ",") + `)
+		GROUP BY ss.project_request_id, ss.step_order, ss.step_name, ss.status
+		ORDER BY ss.project_request_id ASC, ss.step_order ASC
+	`
+
+	historyRows, err := config.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer historyRows.Close()
+
+	linesByRequest := make(map[int64][]string, len(rows))
+	for historyRows.Next() {
+		var (
+			requestID  int64
+			stepOrder  int
+			stepName   string
+			stepStatus string
+			decisions  string
+		)
+		if err := historyRows.Scan(&requestID, &stepOrder, &stepName, &stepStatus, &decisions); err != nil {
+			return nil, err
+		}
+
+		line := fmt.Sprintf("Step %d - %s: %s", stepOrder, strings.TrimSpace(stepName), humanizeProjectRequestStepStatus(stepStatus))
+		decisions = strings.TrimSpace(decisions)
+		if decisions != "" {
+			line += " | " + decisions
+		}
+		linesByRequest[requestID] = append(linesByRequest[requestID], line)
+	}
+	if err := historyRows.Err(); err != nil {
+		return nil, err
+	}
+
+	for _, row := range rows {
+		lines := linesByRequest[row.ID]
+		if len(lines) == 0 {
+			summary[row.ID] = "Belum ada progres step approval."
+			continue
+		}
+		summary[row.ID] = strings.Join(lines, "\n")
+	}
+
+	return summary, nil
 }
 
 func validatePublicProjectRequestForm(form map[string]string) error {

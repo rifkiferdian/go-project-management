@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>{{ if .Title }}{{ .Title }}{{ else }}Public Project Requests{{ end }}</title>
+        <title>{{ if .Title }}{{ .Title }}{{ else }}Daftar Request Project Publik{{ end }}</title>
 
         <link rel="stylesheet" href="/assets/fonts/google/plus-jakarta-sans.css">
         <link rel="stylesheet" href="/assets/css/tailwind.css">
@@ -17,9 +17,9 @@
 
                     <div class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-5">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-orange-500">Public Form</p>
-                            <h1 class="mt-2 text-2xl font-semibold sm:text-3xl" style="color: #f26419;">Project Requests List</h1>
-                            <p class="mt-2 text-sm text-slate-600">Daftar pengajuan project yang sudah disubmit dari halaman public.</p>
+                            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-orange-500">Form Publik</p>
+                            <h1 class="mt-2 text-2xl font-semibold sm:text-3xl" style="color: #f26419;">Daftar Request Project</h1>
+                            <p class="mt-2 text-sm text-slate-600">Daftar pengajuan project yang sudah dikirim dari halaman publik.</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
                             <a href="/project-requests/new" class="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700 transition hover:border-orange-300 hover:bg-orange-100">
@@ -36,7 +36,7 @@
                     <div class="mt-5 grid gap-3 sm:grid-cols-2">
                         <div class="rounded-2xl border border-orange-100 bg-orange-50/50 px-4 py-3">
                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-orange-500">Total Data</p>
-                            <p class="mt-1 text-xl font-semibold text-slate-800">{{ len .Rows }} Request</p>
+                            <p class="mt-1 text-xl font-semibold text-slate-800">{{ len .Rows }} Data</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Filter</p>
@@ -50,7 +50,7 @@
                                 type="text"
                                 name="q"
                                 value="{{ .Keyword }}"
-                                placeholder="Cari request no / employee id"
+                                placeholder="Cari nomor request / ID karyawan"
                                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200/60"
                             >
                             <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm" style="background-color: #f26419;">
@@ -64,13 +64,13 @@
                         <table class="w-full min-w-[880px] text-sm">
                             <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                                 <tr>
-                                    <th class="px-3 py-2 text-left font-semibold">Request No</th>
+                                    <th class="px-3 py-2 text-left font-semibold">No Request</th>
                                     <th class="px-3 py-2 text-left font-semibold">Project</th>
-                                    <th class="px-3 py-2 text-left font-semibold">Requester</th>
+                                    <th class="px-3 py-2 text-left font-semibold">Pemohon</th>
                                     <th class="px-3 py-2 text-left font-semibold">Divisi</th>
                                     <th class="px-3 py-2 text-left font-semibold">Status</th>
                                     <th class="px-3 py-2 text-left font-semibold">Dokumen</th>
-                                    <th class="px-3 py-2 text-left font-semibold">Submitted At</th>
+                                    <th class="px-3 py-2 text-left font-semibold">Waktu Submit</th>
                                     <th class="px-3 py-2 text-left font-semibold">Aksi</th>
                                 </tr>
                             </thead>
@@ -85,12 +85,18 @@
                                     </td>
                                     <td class="px-3 py-3 text-slate-700">{{ .DivisionName }}</td>
                                     <td class="px-3 py-3">
-                                        <span class="inline-flex items-center rounded-lg border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700">{{ .StatusLabel }}</span>
+                                        <span class="inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold
+                                            {{ if eq .Status "rejected" }}border border-rose-200 bg-rose-50 text-rose-700
+                                            {{ else if eq .Status "pending" }}border border-amber-200 bg-amber-50 text-amber-700
+                                            {{ else if or (eq .Status "approved") (eq .Status "synced_to_project") }}border border-emerald-200 bg-emerald-50 text-emerald-700
+                                            {{ else }}border border-slate-200 bg-slate-50 text-slate-700{{ end }}">
+                                            {{ .StatusLabel }}
+                                        </span>
                                     </td>
                                     <td class="px-3 py-3 text-slate-700">
                                         {{ if .HasAttachment }}
                                         <a href="{{ .AttachmentPath }}" target="_blank" class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
-                                            <i class="bx bx-link-external"></i>Link File
+                                            <i class="bx bx-link-external"></i>Lihat File
                                         </a>
                                         {{ else }}
                                         <span class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600">
@@ -111,7 +117,9 @@
                                             data-requester-employee="{{ .RequesterEmployee }}"
                                             data-division-name="{{ .DivisionName }}"
                                             data-ticket-prefix="{{ .TicketPrefix }}"
+                                            data-status="{{ .Status }}"
                                             data-status-label="{{ .StatusLabel }}"
+                                            data-step-history="{{ .StepHistorySummary }}"
                                             data-created-at="{{ .CreatedAtDisplay }}"
                                             data-has-attachment="{{ if .HasAttachment }}Ya{{ else }}Tidak{{ end }}"
                                             data-attachment-path="{{ .AttachmentPath }}"
@@ -140,8 +148,8 @@
                 <div class="bg-gradient-to-r from-orange-500 to-orange-400 px-5 py-4 text-white sm:px-6">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-orange-100">Public Request</p>
-                            <h2 class="mt-1 text-lg font-semibold">Detail Project Request</h2>
+                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-orange-100">Request Publik</p>
+                            <h2 class="mt-1 text-lg font-semibold">Detail Request Project</h2>
                         </div>
                         <button type="button" class="rounded-lg bg-white/15 p-1 text-white transition hover:bg-white/25" data-modal-close>
                             <i class="bx bx-x text-2xl"></i>
@@ -151,19 +159,39 @@
 
                 <div class="space-y-5 p-5 sm:p-6">
                     <div class="rounded-2xl border border-orange-100 bg-orange-50/50 px-4 py-3">
-                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-orange-600">Project</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-orange-600">Nama Project</p>
                         <p id="detail-project-name" class="mt-1 text-base font-semibold text-slate-800">-</p>
                     </div>
 
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <div class="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Request No</p><p id="detail-request-no" class="mt-1 text-sm font-semibold text-slate-800">-</p></div>
-                        <div class="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Submitted At</p><p id="detail-created-at" class="mt-1 text-sm text-slate-700">-</p></div>
-                        <div class="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Requester</p><p id="detail-requester-name" class="mt-1 text-sm text-slate-700">-</p></div>
-                        <div class="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Employee ID</p><p id="detail-requester-employee" class="mt-1 text-sm text-slate-700">-</p></div>
-                        <div class="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Divisi</p><p id="detail-division-name" class="mt-1 text-sm text-slate-700">-</p></div>
-                        <div class="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Ticket Prefix</p><p id="detail-ticket-prefix" class="mt-1 text-sm text-slate-700">-</p></div>
-                        <div class="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Status</p><p id="detail-status-label" class="mt-1 inline-flex items-center rounded-lg border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700">-</p></div>
-                        <div class="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5"><p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Dokumen</p><p id="detail-has-attachment" class="mt-1 text-sm text-slate-700">-</p></div>
+                    <div class="rounded-xl bg-slate-50/40 px-3 py-2.5">
+                        <table class="w-full text-sm">
+                            <tbody class="text-slate-700">
+                                <tr>
+                                    <td class="w-[22%] py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">No Request</td>
+                                    <td id="detail-request-no" class="w-[28%] py-1 text-xs font-semibold text-slate-800">-</td>
+                                    <td class="w-[22%] py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Waktu Submit</td>
+                                    <td id="detail-created-at" class="w-[28%] py-1 text-xs">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Pemohon</td>
+                                    <td id="detail-requester-name" class="py-1 text-xs">-</td>
+                                    <td class="py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">ID Karyawan</td>
+                                    <td id="detail-requester-employee" class="py-1 text-xs">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Divisi</td>
+                                    <td id="detail-division-name" class="py-1 text-xs">-</td>
+                                    <td class="py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Prefix Tiket</td>
+                                    <td id="detail-ticket-prefix" class="py-1 text-xs">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Status</td>
+                                    <td class="py-1"><span id="detail-status-label" class="inline-flex items-center rounded-lg border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700">-</span></td>
+                                    <td class="py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Dokumen</td>
+                                    <td id="detail-has-attachment" class="py-1 text-xs">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
 
                     <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
@@ -183,8 +211,14 @@
                             <p id="detail-project-description" class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">-</p>
                         </div>
                         <div class="rounded-xl border border-slate-200 bg-slate-50/40 px-4 py-3">
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Business Goal</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Tujuan Bisnis</p>
                             <p id="detail-business-goal" class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">-</p>
+                        </div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50/40 px-4 py-3">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Riwayat Step Approval</p>
+                            <div id="detail-step-history-cards" class="mt-2 space-y-2">
+                                <p class="text-sm text-slate-500">Belum ada riwayat step approval.</p>
+                            </div>
                         </div>
                     </div>
 
@@ -222,6 +256,94 @@
                 el.textContent = normalized === '' ? '-' : normalized;
             }
 
+            function setDetailStatusBadge(status, label) {
+                var el = document.getElementById('detail-status-label');
+                if (!el) return;
+                el.textContent = (label || '').trim() || '-';
+                el.className = 'mt-1 inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold';
+
+                var st = (status || '').trim().toLowerCase();
+                if (st === 'rejected' || st === 'ditolak') {
+                    el.classList.add('border', 'border-rose-200', 'bg-rose-50', 'text-rose-700');
+                } else if (st === 'pending' || st === 'menunggu persetujuan') {
+                    el.classList.add('border', 'border-amber-200', 'bg-amber-50', 'text-amber-700');
+                } else if (st === 'approved' || st === 'synced_to_project' || st === 'disetujui' || st === 'masuk ke project') {
+                    el.classList.add('border', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+                } else {
+                    el.classList.add('border', 'border-slate-200', 'bg-slate-50', 'text-slate-700');
+                }
+            }
+
+            function escapeHtml(value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function renderStepHistory(summary) {
+                var container = document.getElementById('detail-step-history-cards');
+                if (!container) return;
+
+                var raw = (summary || '').trim();
+                if (!raw || raw === '-') {
+                    container.innerHTML = '<p class="text-sm text-slate-500">Belum ada riwayat tahap persetujuan.</p>';
+                    return;
+                }
+
+                var lines = raw.split('\n').map(function (line) { return line.trim(); }).filter(Boolean);
+                if (!lines.length) {
+                    container.innerHTML = '<p class="text-sm text-slate-500">Belum ada riwayat tahap persetujuan.</p>';
+                    return;
+                }
+
+                var html = '';
+                lines.forEach(function (line) {
+                    var parts = line.split('|');
+                    var stepPart = (parts[0] || '').trim();
+                    var decisionsPart = (parts[1] || '').trim();
+
+                    var stepTitle = stepPart;
+                    var stepStatus = 'Pending';
+                    var statusIdx = stepPart.lastIndexOf(':');
+                    if (statusIdx >= 0) {
+                        stepTitle = stepPart.slice(0, statusIdx).trim();
+                        stepStatus = stepPart.slice(statusIdx + 1).trim();
+                    }
+
+                    var statusKey = stepStatus.toLowerCase();
+                    var statusClass = 'border-slate-200 bg-slate-50 text-slate-700';
+                    if (statusKey === 'approved' || statusKey === 'disetujui') statusClass = 'border-emerald-200 bg-emerald-50 text-emerald-700';
+                    if (statusKey === 'rejected' || statusKey === 'ditolak') statusClass = 'border-rose-200 bg-rose-50 text-rose-700';
+                    if (statusKey === 'pending' || statusKey === 'menunggu') statusClass = 'border-amber-200 bg-amber-50 text-amber-700';
+
+                    var decisionsHtml = '<span class="text-xs text-slate-500">Belum ada keputusan approver.</span>';
+                    if (decisionsPart) {
+                        var chips = decisionsPart.split(',').map(function (item) { return item.trim(); }).filter(Boolean).map(function (item) {
+                            var lower = item.toLowerCase();
+                            var chipClass = 'border-slate-200 bg-slate-50 text-slate-700';
+                            if (lower.indexOf('(approved)') !== -1 || lower.indexOf('(disetujui)') !== -1) chipClass = 'border-emerald-200 bg-emerald-50 text-emerald-700';
+                            if (lower.indexOf('(rejected)') !== -1 || lower.indexOf('(ditolak)') !== -1) chipClass = 'border-rose-200 bg-rose-50 text-rose-700';
+                            return '<span class="inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-semibold ' + chipClass + '">' + escapeHtml(item) + '</span>';
+                        });
+                        decisionsHtml = chips.join(' ');
+                    }
+
+                    html += ''
+                        + '<div class="rounded-lg border border-slate-200 bg-white px-3 py-2.5">'
+                        + '  <div class="flex flex-wrap items-center justify-between gap-2">'
+                        + '    <p class="text-sm font-semibold text-slate-800">' + escapeHtml(stepTitle) + '</p>'
+                        + '    <span class="inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-semibold ' + statusClass + '">' + escapeHtml(stepStatus) + '</span>'
+                        + '  </div>'
+                        + '  <div class="mt-2 flex flex-wrap gap-1.5">' + decisionsHtml + '</div>'
+                        + '</div>';
+                });
+
+                container.innerHTML = html;
+            }
+
             function setDetailAttachment(path, name) {
                 var link = document.getElementById('detail-attachment-link');
                 var linkName = document.getElementById('detail-attachment-name');
@@ -254,8 +376,9 @@
                         setDetailText('detail-requester-employee', btn.getAttribute('data-requester-employee'));
                         setDetailText('detail-division-name', btn.getAttribute('data-division-name'));
                         setDetailText('detail-ticket-prefix', btn.getAttribute('data-ticket-prefix'));
-                        setDetailText('detail-status-label', btn.getAttribute('data-status-label'));
+                        setDetailStatusBadge(btn.getAttribute('data-status'), btn.getAttribute('data-status-label'));
                         setDetailText('detail-created-at', btn.getAttribute('data-created-at'));
+                        renderStepHistory(btn.getAttribute('data-step-history'));
                         setDetailText('detail-has-attachment', btn.getAttribute('data-has-attachment'));
                         setDetailAttachment(btn.getAttribute('data-attachment-path'), btn.getAttribute('data-attachment-name'));
                         openDetailModal();

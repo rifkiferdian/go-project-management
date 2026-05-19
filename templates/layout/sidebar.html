@@ -23,12 +23,20 @@
                     <span>Dashboard</span>
                 </a>
             </li>
-            {{ if or (index .Permissions "List projects") (index .Permissions "List tickets") (index .Permissions "List sprints") }}
+            {{ if or (index .Permissions "List project requests") (index .Permissions "List projects") (index .Permissions "List tickets") (index .Permissions "List sprints") }}
             <li class="pt-2">
                 <div class="px-3 py-3 text-[14px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:px-4">
                     APP Management 
                 </div>
                 <ul class="mt-1 space-y-1 pl-2">
+                    {{ if index .Permissions "List project requests" }}
+                    <li>
+                        <a href="{{ baseURL "/project-requests/manage" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "projectRequestManage" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "projectRequestManage" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-briefcase-alt-2 text-lg"></i>
+                            <span>Projects Requested</span>
+                        </a>
+                    </li>
+                    {{ end }}
                     {{ if index .Permissions "List projects" }}
                     <li>
                         <a href="{{ baseURL "/projects" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "project" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "project" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
@@ -89,6 +97,40 @@
                     </li>
                 {{ end }}
             </li>
+
+            {{ if or (index .Permissions "List approval flows") (index .Permissions "List approval flow steps") (index .Permissions "List approval flow step approvers") }}
+            <li class="pt-2">
+                <div class="px-3 py-3 text-[14px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:px-4">
+                    Approval flows
+                </div>
+                <ul class="mt-1 space-y-1 pl-2">
+                    {{ if index .Permissions "List approval flows" }}
+                    <li>
+                        <a href="{{ baseURL "/approval-flows" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "approvalFlow" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "approvalFlow" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-git-branch text-lg"></i>
+                            <span>Approval flows</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ if index .Permissions "List approval flow steps" }}
+                    <li>
+                        <a href="{{ baseURL "/approval-flow-steps" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "approvalFlowStep" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "approvalFlowStep" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-list-ol text-lg"></i>
+                            <span>Approval steps</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ if index .Permissions "List approval flow step approvers" }}
+                    <li>
+                        <a href="{{ baseURL "/approval-flow-step-approvers" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "approvalFlowStepApprover" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "approvalFlowStepApprover" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-user-check text-lg"></i>
+                            <span>Step approvers</span>
+                        </a>
+                    </li>
+                    {{ end }}
+                </ul>
+            </li>
+            {{ end }}
             
             {{ if or (index .Permissions "List activities") (index .Permissions "List project statuses") (index .Permissions "List project priorities") (index .Permissions "List ticket statuses") (index .Permissions "List ticket types") (index .Permissions "List ticket priorities")  }}
             <li class="pt-2">
@@ -151,39 +193,7 @@
             </li>
             
             {{ end }}
-            {{ if or (index .Permissions "List approval flows") (index .Permissions "List approval flow steps") (index .Permissions "List approval flow step approvers") }}
-            <li class="pt-2">
-                <div class="px-3 py-3 text-[14px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:px-4">
-                    Approval flows
-                </div>
-                <ul class="mt-1 space-y-1 pl-2">
-                    {{ if index .Permissions "List approval flows" }}
-                    <li>
-                        <a href="{{ baseURL "/approval-flows" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "approvalFlow" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "approvalFlow" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
-                            <i class="bx bx-git-branch text-lg"></i>
-                            <span>Approval flows</span>
-                        </a>
-                    </li>
-                    {{ end }}
-                    {{ if index .Permissions "List approval flow steps" }}
-                    <li>
-                        <a href="{{ baseURL "/approval-flow-steps" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "approvalFlowStep" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "approvalFlowStep" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
-                            <i class="bx bx-list-ol text-lg"></i>
-                            <span>Approval steps</span>
-                        </a>
-                    </li>
-                    {{ end }}
-                    {{ if index .Permissions "List approval flow step approvers" }}
-                    <li>
-                        <a href="{{ baseURL "/approval-flow-step-approvers" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "approvalFlowStepApprover" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "approvalFlowStepApprover" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
-                            <i class="bx bx-user-check text-lg"></i>
-                            <span>Step approvers</span>
-                        </a>
-                    </li>
-                    {{ end }}
-                </ul>
-            </li>
-            {{ end }}
+            
         </ul>
     </nav>
 </aside>
