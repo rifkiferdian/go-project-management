@@ -49,10 +49,12 @@
                                         </select>
                                         <button type="submit" class="hidden">Filter</button>
                                     </form>
+                                    {{ if .CanCreateTicket }}
                                     <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #22c55e;" data-modal-open="ticketCreateModal">
                                         <i class="bx bx-plus text-base"></i>
                                         Add Ticket
                                     </button>
+                                    {{ end }}
                                     <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
                                         <button type="button" class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition" data-view-toggle="kanban">
                                             <i class="bx bx-grid-alt text-base"></i>
@@ -123,13 +125,13 @@
                                                                 <i class="bx bx-show text-sm"></i>
                                                                 View
                                                             </a>
-                                                            {{ if index $.Permissions "Update ticket" }}
+                                                            {{ if and (index $.Permissions "Update ticket") (index $.ManageableProjectIDs .ProjectID) }}
                                                             <a href="/tickets/{{ .ID }}/edit" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
                                                             </a>
                                                             {{ end }}
-                                                            {{ if index $.Permissions "Delete ticket" }}
+                                                            {{ if and (index $.Permissions "Delete ticket") (index $.ManageableProjectIDs .ProjectID) }}
                                                             <button type="button" class="btn-delete-ticket inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100" data-url="/tickets/delete/{{ .ID }}?project_id={{ $.SelectedProjectID }}" data-ticket-name="{{ .Name }}">
                                                                 <i class="bx bx-trash text-sm"></i>
                                                                 Delete
@@ -203,13 +205,13 @@
                                                                 <i class="bx bx-show text-sm"></i>
                                                                 View
                                                             </a>
-                                                            {{ if index $.Permissions "Update ticket" }}
+                                                            {{ if and (index $.Permissions "Update ticket") (index $.ManageableProjectIDs .ProjectID) }}
                                                             <a href="/tickets/{{ .ID }}/edit" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
                                                             </a>
                                                             {{ end }}
-                                                            {{ if index $.Permissions "Delete ticket" }}
+                                                            {{ if and (index $.Permissions "Delete ticket") (index $.ManageableProjectIDs .ProjectID) }}
                                                             <button type="button" class="btn-delete-ticket inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100" data-url="/tickets/delete/{{ .ID }}?project_id={{ $.SelectedProjectID }}" data-ticket-name="{{ .Name }}">
                                                                 <i class="bx bx-trash text-sm"></i>
                                                                 Delete

@@ -5,6 +5,7 @@ type TicketListItem struct {
 	ID               int
 	Code             string
 	Name             string
+	ProjectID        int
 	ProjectName      string
 	StatusName       string
 	StatusColor      string
@@ -238,6 +239,7 @@ type BoardTicket struct {
 	ID               int
 	Code             string
 	Name             string
+	ProjectID        int
 	ProjectName      string
 	PriorityName     string
 	PriorityColor    string

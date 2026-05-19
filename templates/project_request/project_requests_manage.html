@@ -47,12 +47,13 @@
                                 {{ if .Success }}<div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ .Success }}</div>{{ end }}
 
                                 <div class="overflow-x-auto">
-                                    <table class="w-full min-w-[1220px] text-sm">
+                                    <table class="w-full min-w-[1320px] text-sm">
                                         <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                                             <tr>
                                                 <th class="px-3 py-2 text-left font-semibold">Request</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Status</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Project</th>
+                                                <th class="px-3 py-2 text-left font-semibold">Divisi</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Flow</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Submitted At</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Aksi</th>
@@ -65,11 +66,6 @@
                                                     <p class="font-semibold text-slate-700">{{ .RequestNo }}</p>
                                                 </td>
                                                 <td class="px-3 py-3">
-                                                    <p class="font-semibold text-slate-700">{{ .ProjectName }}</p>
-                                                    <p class="mt-1 text-xs text-slate-500">Prefix: {{ .TicketPrefix }}</p>
-                                                </td>
-                                                <td class="px-3 py-3 text-slate-700">{{ .FlowName }}</td>
-                                                <td class="px-3 py-3">
                                                     <span class="inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold
                                                         {{ if eq .Status "rejected" }}border border-rose-200 bg-rose-50 text-rose-700
                                                         {{ else if eq .Status "pending" }}border border-amber-200 bg-amber-50 text-amber-700
@@ -78,6 +74,12 @@
                                                         {{ .StatusLabel }}
                                                     </span>
                                                 </td>
+                                                <td class="px-3 py-3">
+                                                    <p class="font-semibold text-slate-700">{{ .ProjectName }}</p>
+                                                    <p class="mt-1 text-xs text-slate-500">Prefix: {{ .TicketPrefix }}</p>
+                                                </td>
+                                                <td class="px-3 py-3 text-slate-700">{{ .DivisionName }}</td>
+                                                <td class="px-3 py-3 text-slate-700">{{ .FlowName }}</td>
                                                 <td class="px-3 py-3 text-slate-600">{{ .CreatedAtDisplay }}</td>
                                                 <td class="px-3 py-3">
                                                     <div class="flex flex-wrap items-center gap-2">
@@ -98,7 +100,7 @@
                                             </tr>
                                             {{ else }}
                                             <tr>
-                                                <td colspan="6" class="px-3 py-8 text-center text-sm text-slate-500">Tidak ada data project request yang bisa ditampilkan.</td>
+                                                <td colspan="7" class="px-3 py-8 text-center text-sm text-slate-500">Tidak ada data project request yang bisa ditampilkan.</td>
                                             </tr>
                                             {{ end }}
                                         </tbody>
