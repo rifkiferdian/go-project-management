@@ -49,16 +49,6 @@ func ProjectStore(c *gin.Context) {
 		renderProjectPage(c, projectSvc, models.Project{}, "divisi requester tidak valid")
 		return
 	}
-	userID := currentSessionUserID(c)
-	canAssign, err := userCanAssignProjectDivisions(userID, divisionIDs)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canAssign {
-		renderProjectPage(c, projectSvc, models.Project{}, "Anda hanya bisa menambah project untuk divisi Anda sendiri")
-		return
-	}
 
 	input := models.ProjectCreateInput{
 		Name:         strings.TrimSpace(form.Name),
@@ -122,25 +112,6 @@ func ProjectUpdate(c *gin.Context) {
 		renderProjectPage(c, projectSvc, models.Project{ID: form.ID}, "divisi requester tidak valid")
 		return
 	}
-	userID := currentSessionUserID(c)
-	canManage, err := userCanManageProjectByID(userID, form.ID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		renderProjectPage(c, projectSvc, models.Project{ID: form.ID}, "Anda tidak bisa mengubah project di luar divisi Anda")
-		return
-	}
-	canAssign, err := userCanAssignProjectDivisions(userID, divisionIDs)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canAssign {
-		renderProjectPage(c, projectSvc, models.Project{ID: form.ID}, "Anda hanya bisa mengatur divisi project sesuai divisi Anda sendiri")
-		return
-	}
 
 	input := models.ProjectUpdateInput{
 		ID:           form.ID,
@@ -186,15 +157,6 @@ func ProjectDelete(c *gin.Context) {
 
 	projectRepo := &repositories.ProjectRepository{DB: config.DB}
 	projectService := &services.ProjectService{Repo: projectRepo}
-	canManage, err := userCanManageProjectByID(currentSessionUserID(c), id)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.String(http.StatusForbidden, "Anda tidak bisa menghapus project di luar divisi Anda")
-		return
-	}
 
 	if err := projectService.DeleteProject(id); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
@@ -221,12 +183,6 @@ func renderProjectPage(c *gin.Context, projectService *services.ProjectService, 
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-	userID := currentSessionUserID(c)
-	divisions, err = filterDivisionOptionsByUser(divisions, userID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
 	priorities, err := projectService.GetPriorityOptions()
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
@@ -244,11 +200,6 @@ func renderProjectPage(c *gin.Context, projectService *services.ProjectService, 
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-	manageableProjectIDs, err := userManageableProjectIDSet(userID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
 
 	Render(c, "project.html", gin.H{
 		"Title":          "Daftar Project",
@@ -259,8 +210,6 @@ func renderProjectPage(c *gin.Context, projectService *services.ProjectService, 
 		"developerUsers": developerUsers,
 		"divisions":      divisions,
 		"priorities":     priorities,
-		"CanCreateProject": len(divisions) > 0,
-		"ManageableProjectIDs": manageableProjectIDs,
 		"Old":            old,
 		"Error":          message,
 	})

@@ -41,12 +41,10 @@
                                             List
                                         </button>
                                     </div>
-                                    {{ if .CanCreateProject }}
                                     <button type="button" class="inline-flex items-center gap-2 rounded-xl bg-[#f26419] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#dc5a15]" data-modal-open="projectModal">
                                         <i class="bx bx-plus text-base"></i>
                                         New Project
                                     </button>
-                                    {{ end }}
                                 </div>
                             </div>
                             <div class="p-4">
@@ -95,7 +93,6 @@
                                                     </td>
                                                     <td class="px-3 py-3 text-slate-600">{{ $project.TicketCount }}</td>
                                                     <td class="px-3 py-3">
-                                                        {{ if index $.ManageableProjectIDs $project.ID }}
                                                         <div class="flex flex-wrap items-center gap-2">
                                                             <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-developer-id="{{ $project.DeveloperID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
                                                                 <i class="bx bx-pen text-sm"></i>
@@ -106,9 +103,6 @@
                                                                 Del
                                                             </button>
                                                         </div>
-                                                        {{ else }}
-                                                        <span class="text-xs font-semibold text-slate-400">Tidak ada akses</span>
-                                                        {{ end }}
                                                     </td>
                                                 </tr>
                                                 {{ else }}
@@ -182,7 +176,6 @@
                                                             <span>{{ $project.TicketCount }} ticket</span>
                                                         </div>
                                                         <div class="mt-4 flex flex-wrap items-center gap-2">
-                                                            {{ if index $.ManageableProjectIDs $project.ID }}
                                                             <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-developer-id="{{ $project.DeveloperID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
@@ -191,9 +184,6 @@
                                                                 <i class="bx bx-trash text-sm"></i>
                                                                 Del
                                                             </button>
-                                                            {{ else }}
-                                                            <span class="text-xs font-semibold text-slate-400">Tidak ada akses</span>
-                                                            {{ end }}
                                                         </div>
                                                     </article>
                                                     {{ end }}

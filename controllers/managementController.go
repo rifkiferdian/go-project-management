@@ -23,16 +23,6 @@ func TicketIndex(c *gin.Context) {
 	if selectedProjectID < 0 {
 		selectedProjectID = 0
 	}
-	if selectedProjectID > 0 {
-		canManage, err := userCanManageProjectByID(currentSessionUserID(c), selectedProjectID)
-		if err != nil {
-			c.String(http.StatusInternalServerError, err.Error())
-			return
-		}
-		if !canManage {
-			selectedProjectID = 0
-		}
-	}
 
 	renderTicketPage(c, selectedProjectID, "", "", nil)
 }
@@ -57,15 +47,6 @@ func TicketStore(c *gin.Context) {
 		StartsAt:       c.PostForm("starts_at"),
 		EndsAt:         c.PostForm("ends_at"),
 	}
-	canManage, err := userCanManageProjectByID(currentSessionUserID(c), input.ProjectID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		renderTicketPage(c, selectedProjectID, "Anda tidak bisa menambah ticket untuk project di luar divisi Anda", "ticketCreateModal", &input)
-		return
-	}
 
 	if err := svc.CreateRoadmapTicket(input); err != nil {
 		renderTicketPage(c, selectedProjectID, err.Error(), "ticketCreateModal", &input)
@@ -81,17 +62,6 @@ func TicketStore(c *gin.Context) {
 
 func renderTicketPage(c *gin.Context, selectedProjectID int, message, openModal string, ticketOld *models.RoadmapTicketCreateInput) {
 	svc := managementService()
-	userID := currentSessionUserID(c)
-	if selectedProjectID > 0 {
-		canManage, err := userCanManageProjectByID(userID, selectedProjectID)
-		if err != nil {
-			c.String(http.StatusInternalServerError, err.Error())
-			return
-		}
-		if !canManage {
-			selectedProjectID = 0
-		}
-	}
 
 	tickets, err := svc.GetTickets(selectedProjectID)
 	if err != nil {
@@ -110,25 +80,11 @@ func renderTicketPage(c *gin.Context, selectedProjectID int, message, openModal 
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-	projectOptions, manageableProjectIDs, err := filterProjectOptionsByUser(projectOptions, userID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if selectedProjectID > 0 && !manageableProjectIDs[selectedProjectID] {
-		selectedProjectID = 0
-	}
 
 	epicOptions, err := svc.GetRoadmapEpicOptions()
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
-	}
-	filteredEpicOptions := make([]models.RoadmapEpicOption, 0, len(epicOptions))
-	for _, epic := range epicOptions {
-		if manageableProjectIDs[epic.ProjectID] {
-			filteredEpicOptions = append(filteredEpicOptions, epic)
-		}
 	}
 
 	userRepo := &repositories.UserRepository{DB: config.DB}
@@ -148,10 +104,8 @@ func renderTicketPage(c *gin.Context, selectedProjectID int, message, openModal 
 		"OpenModal":         openModal,
 		"TicketCreateOld":   ticketOld,
 		"UserOptions":       userOptions,
-		"EpicOptions":       filteredEpicOptions,
+		"EpicOptions":       epicOptions,
 		"ProjectOptions":    projectOptions,
-		"ManageableProjectIDs": manageableProjectIDs,
-		"CanCreateTicket":   len(projectOptions) > 0,
 		"SelectedProjectID": selectedProjectID,
 		"ProjectLabel":      resolveRoadmapProjectLabel(projectOptions, selectedProjectID),
 	})
@@ -199,15 +153,6 @@ func TicketAttachmentStore(c *gin.Context) {
 	ticketID, err := strconv.Atoi(c.Param("id"))
 	if err != nil || ticketID <= 0 {
 		c.String(http.StatusBadRequest, "ticket tidak valid")
-		return
-	}
-	canManage, err := userCanManageTicketByID(currentSessionUserID(c), ticketID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.String(http.StatusForbidden, "Anda tidak bisa mengubah ticket di luar divisi Anda")
 		return
 	}
 
@@ -265,15 +210,6 @@ func TicketContentUpdate(c *gin.Context) {
 		c.String(http.StatusBadRequest, "ticket tidak valid")
 		return
 	}
-	canManage, err := userCanManageTicketByID(currentSessionUserID(c), ticketID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.String(http.StatusForbidden, "Anda tidak bisa mengubah ticket di luar divisi Anda")
-		return
-	}
 
 	if err := managementService().UpdateTicketContent(ticketID, c.PostForm("content")); err != nil {
 		c.String(http.StatusBadRequest, err.Error())
@@ -287,15 +223,6 @@ func TicketCommentStore(c *gin.Context) {
 	ticketID, err := strconv.Atoi(c.Param("id"))
 	if err != nil || ticketID <= 0 {
 		c.String(http.StatusBadRequest, "ticket tidak valid")
-		return
-	}
-	canManage, err := userCanManageTicketByID(currentSessionUserID(c), ticketID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.String(http.StatusForbidden, "Anda tidak bisa mengubah ticket di luar divisi Anda")
 		return
 	}
 
@@ -319,15 +246,6 @@ func TicketCommentUpdate(c *gin.Context) {
 		c.String(http.StatusBadRequest, "comment tidak valid")
 		return
 	}
-	canManage, err := userCanManageTicketByID(currentSessionUserID(c), ticketID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.String(http.StatusForbidden, "Anda tidak bisa mengubah ticket di luar divisi Anda")
-		return
-	}
 
 	if err := managementService().UpdateTicketComment(ticketID, commentID, currentSessionUserID(c), c.PostForm("content")); err != nil {
 		c.String(http.StatusBadRequest, err.Error())
@@ -341,15 +259,6 @@ func TicketTodoStore(c *gin.Context) {
 	ticketID, err := strconv.Atoi(c.Param("id"))
 	if err != nil || ticketID <= 0 {
 		c.String(http.StatusBadRequest, "ticket tidak valid")
-		return
-	}
-	canManage, err := userCanManageTicketByID(currentSessionUserID(c), ticketID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.String(http.StatusForbidden, "Anda tidak bisa mengubah ticket di luar divisi Anda")
 		return
 	}
 
@@ -371,15 +280,6 @@ func TicketTodoUpdate(c *gin.Context) {
 	todoID, err := strconv.Atoi(c.Param("todoId"))
 	if err != nil || todoID <= 0 {
 		c.String(http.StatusBadRequest, "todo tidak valid")
-		return
-	}
-	canManage, err := userCanManageTicketByID(currentSessionUserID(c), ticketID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.String(http.StatusForbidden, "Anda tidak bisa mengubah ticket di luar divisi Anda")
 		return
 	}
 
@@ -404,15 +304,6 @@ func TicketTodoDelete(c *gin.Context) {
 		c.String(http.StatusBadRequest, "todo tidak valid")
 		return
 	}
-	canManage, err := userCanManageTicketByID(currentSessionUserID(c), ticketID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.String(http.StatusForbidden, "Anda tidak bisa mengubah ticket di luar divisi Anda")
-		return
-	}
 
 	if err := managementService().DeleteTicketTodo(ticketID, todoID, currentSessionUserID(c)); err != nil {
 		c.String(http.StatusBadRequest, err.Error())
@@ -428,18 +319,6 @@ func TicketEdit(c *gin.Context) {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
 			"code_error": http.StatusBadRequest,
 			"error":      "ticket tidak valid",
-		})
-		return
-	}
-	canManage, err := userCanManageTicketByID(currentSessionUserID(c), id)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"code_error": http.StatusForbidden,
-			"error":      "Anda tidak bisa mengubah ticket di luar divisi Anda",
 		})
 		return
 	}
@@ -470,15 +349,6 @@ func TicketUpdate(c *gin.Context) {
 		StartsAt:      c.PostForm("starts_at"),
 		EndsAt:        c.PostForm("ends_at"),
 	}
-	canManage, err := userCanManageTicketByID(currentSessionUserID(c), input.ID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.String(http.StatusForbidden, "Anda tidak bisa mengubah ticket di luar divisi Anda")
-		return
-	}
 
 	svc := managementService()
 	savedInput, err := svc.UpdateTicket(input, currentSessionUserID(c))
@@ -494,15 +364,6 @@ func TicketDelete(c *gin.Context) {
 	id, err := strconv.Atoi(strings.TrimSpace(c.Param("id")))
 	if err != nil || id <= 0 {
 		c.String(http.StatusBadRequest, "ticket tidak valid")
-		return
-	}
-	canManage, err := userCanManageTicketByID(currentSessionUserID(c), id)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		c.String(http.StatusForbidden, "Anda tidak bisa menghapus ticket di luar divisi Anda")
 		return
 	}
 
@@ -555,15 +416,6 @@ func RoadMapEpicStore(c *gin.Context) {
 		StartsAt:  c.PostForm("starts_at"),
 		EndsAt:    c.PostForm("ends_at"),
 	}
-	canManage, err := userCanManageProjectByID(currentSessionUserID(c), input.ProjectID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		renderRoadMapPage(c, "Anda tidak bisa menambah epic untuk project di luar divisi Anda", "epicModal", input, nil)
-		return
-	}
 
 	if err := svc.CreateRoadmapEpic(input); err != nil {
 		renderRoadMapPage(c, err.Error(), "epicModal", input, nil)
@@ -587,15 +439,6 @@ func RoadMapTicketStore(c *gin.Context) {
 		StartsAt:       c.PostForm("starts_at"),
 		EndsAt:         c.PostForm("ends_at"),
 	}
-	canManage, err := userCanManageProjectByID(currentSessionUserID(c), input.ProjectID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !canManage {
-		renderRoadMapPage(c, "Anda tidak bisa menambah ticket untuk project di luar divisi Anda", "ticketModal", nil, input)
-		return
-	}
 
 	if err := svc.CreateRoadmapTicket(input); err != nil {
 		renderRoadMapPage(c, err.Error(), "ticketModal", nil, input)
@@ -609,7 +452,6 @@ func renderRoadMapPage(c *gin.Context, message, openModal string, epicOld interf
 	svc := managementService()
 	format := normalizeRoadmapFormat(c.DefaultQuery("format", "week"))
 	selectedProjectID, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("project_id", "0")))
-	userID := currentSessionUserID(c)
 
 	epics, err := svc.GetRoadmapEpics()
 	if err != nil {
@@ -628,14 +470,6 @@ func renderRoadMapPage(c *gin.Context, message, openModal string, epicOld interf
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-	projectOptions, manageableProjectIDs, err := filterProjectOptionsByUser(projectOptions, userID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if selectedProjectID > 0 && !manageableProjectIDs[selectedProjectID] {
-		selectedProjectID = 0
-	}
 
 	totalProjects := len(projectOptions)
 	filteredEpics, filteredTickets := filterRoadmapByProject(epics, tickets, selectedProjectID)
@@ -647,12 +481,6 @@ func renderRoadMapPage(c *gin.Context, message, openModal string, epicOld interf
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
-	}
-	filteredEpicOptions := make([]models.RoadmapEpicOption, 0, len(epicOptions))
-	for _, epic := range epicOptions {
-		if manageableProjectIDs[epic.ProjectID] {
-			filteredEpicOptions = append(filteredEpicOptions, epic)
-		}
 	}
 
 	userRepo := &repositories.UserRepository{DB: config.DB}
@@ -683,9 +511,8 @@ func renderRoadMapPage(c *gin.Context, message, openModal string, epicOld interf
 		"EpicOld":            epicOld,
 		"TicketOld":          ticketOld,
 		"ProjectOptions":     projectOptions,
-		"EpicOptions":        filteredEpicOptions,
+		"EpicOptions":        epicOptions,
 		"UserOptions":        userOptions,
-		"CanCreateRoadmapItem": len(projectOptions) > 0,
 	})
 }
 
