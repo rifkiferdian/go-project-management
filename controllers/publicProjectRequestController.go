@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -447,7 +446,7 @@ func storePublicProjectRequest(c *gin.Context, form map[string]string, requestDi
 	}
 
 	requestNo := generateProjectRequestNo()
-	prefix, err := generateAutoTicketPrefix(tx)
+	prefix, err := generateDivisionTicketPrefix(tx, requestDivisionID)
 	if err != nil {
 		return err
 	}
@@ -602,27 +601,113 @@ func buildSystemRequesterEmail(requestNo string) string {
 	return normalized + "@public-request.local"
 }
 
-func generateAutoTicketPrefix(tx *sql.Tx) (string, error) {
-	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+func generateDivisionTicketPrefix(tx *sql.Tx, divisionID int) (string, error) {
+	divisionPrefix, err := getDivisionPrefix(tx, divisionID)
+	if err != nil {
+		return "", err
+	}
 
-	for i := 0; i < 300; i++ {
-		candidate := make([]byte, 3)
-		for j := 0; j < 3; j++ {
-			candidate[j] = alphabet[rng.Intn(len(alphabet))]
+	startPos := len(divisionPrefix) + 1
+	var lastRequestNo int64
+	if err := tx.QueryRow(`
+		SELECT COALESCE(MAX(CAST(SUBSTRING(requested_ticket_prefix, ?) AS UNSIGNED)), 0)
+		FROM project_requests
+		WHERE requested_ticket_prefix LIKE CONCAT(?, '%')
+			AND requested_ticket_prefix REGEXP CONCAT('^', ?, '[0-9]+$')
+	`, startPos, divisionPrefix, divisionPrefix).Scan(&lastRequestNo); err != nil {
+		return "", err
+	}
+
+	var lastProjectNo int64
+	if err := tx.QueryRow(`
+		SELECT COALESCE(MAX(CAST(SUBSTRING(ticket_prefix, ?) AS UNSIGNED)), 0)
+		FROM projects
+		WHERE ticket_prefix LIKE CONCAT(?, '%')
+			AND ticket_prefix REGEXP CONCAT('^', ?, '[0-9]+$')
+			AND deleted_at IS NULL
+	`, startPos, divisionPrefix, divisionPrefix).Scan(&lastProjectNo); err != nil {
+		return "", err
+	}
+
+	lastNo := lastRequestNo
+	if lastProjectNo > lastNo {
+		lastNo = lastProjectNo
+	}
+
+	nextNo := lastNo + 1
+	candidate := fmt.Sprintf("%s%d", divisionPrefix, nextNo)
+	return candidate, nil
+}
+
+func getDivisionPrefix(tx *sql.Tx, divisionID int) (string, error) {
+	var rawPrefix sql.NullString
+	var divisionName sql.NullString
+	err := tx.QueryRow(`
+		SELECT prefix_division, name
+		FROM divisions
+		WHERE id = ?
+			AND deleted_at IS NULL
+	`, divisionID).Scan(&rawPrefix, &divisionName)
+	if err == sql.ErrNoRows {
+		return "", fmt.Errorf("Divisi dengan id %d tidak ditemukan", divisionID)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	prefix := strings.ToUpper(strings.TrimSpace(rawPrefix.String))
+	if prefix == "" {
+		prefix = autoDivisionPrefixFromName(divisionName.String)
+		if prefix == "" {
+			return "", errors.New("Gagal generate prefix otomatis dari nama divisi")
 		}
-		prefix := string(candidate)
-
-		inUse, err := isPrefixInUse(tx, prefix)
-		if err != nil {
+		if _, err := tx.Exec(`
+			UPDATE divisions
+			SET prefix_division = ?, updated_at = NOW()
+			WHERE id = ?
+		`, prefix, divisionID); err != nil {
 			return "", err
 		}
-		if !inUse {
-			return prefix, nil
+	}
+	if len(prefix) > 10 {
+		return "", errors.New("Prefix division maksimal 10 karakter")
+	}
+	for _, ch := range prefix {
+		if (ch < 'A' || ch > 'Z') && (ch < '0' || ch > '9') {
+			return "", errors.New("Prefix division hanya boleh huruf A-Z dan angka 0-9 tanpa spasi")
 		}
 	}
 
-	return "", errors.New("Gagal generate ticket prefix otomatis")
+	return prefix, nil
+}
+
+func autoDivisionPrefixFromName(name string) string {
+	name = strings.ToUpper(strings.TrimSpace(name))
+	if name == "" {
+		return ""
+	}
+
+	var compact strings.Builder
+	compact.Grow(len(name))
+	for _, ch := range name {
+		if (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') {
+			compact.WriteRune(ch)
+		}
+	}
+
+	cleaned := compact.String()
+	if cleaned == "" {
+		return ""
+	}
+
+	// Simpel: default 2 karakter awal agar mirip contoh AC (Accounting).
+	if len(cleaned) > 2 {
+		cleaned = cleaned[:2]
+	}
+	if len(cleaned) > 10 {
+		cleaned = cleaned[:10]
+	}
+	return cleaned
 }
 
 func nullableString(value string) interface{} {

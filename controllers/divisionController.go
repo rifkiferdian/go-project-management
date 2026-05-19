@@ -28,7 +28,7 @@ func DivisionIndex(c *gin.Context) {
 
 func DivisionStore(c *gin.Context) {
 	divisionSvc := divisionService()
-	if err := divisionSvc.CreateDivision(c.PostForm("name")); err != nil {
+	if err := divisionSvc.CreateDivision(c.PostForm("name"), c.PostForm("prefix_division")); err != nil {
 		renderDivisionWithError(c, err.Error())
 		return
 	}
@@ -44,7 +44,7 @@ func DivisionUpdate(c *gin.Context) {
 	}
 
 	divisionSvc := divisionService()
-	if err := divisionSvc.UpdateDivision(id, c.PostForm("name")); err != nil {
+	if err := divisionSvc.UpdateDivision(id, c.PostForm("name"), c.PostForm("prefix_division")); err != nil {
 		renderDivisionWithError(c, err.Error())
 		return
 	}

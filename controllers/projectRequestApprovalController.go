@@ -903,7 +903,7 @@ func applyProjectRequestDecision(requestID int64, userID int, decision, note str
 		return err
 	}
 
-	if err := syncApprovedProjectRequest(tx, ctx, userID); err != nil {
+	if err := syncApprovedProjectRequest(tx, ctx); err != nil {
 		return err
 	}
 
@@ -1108,7 +1108,7 @@ func nextPendingStepOrder(tx *sql.Tx, requestID int64) (int, bool, error) {
 	return nextStep, true, nil
 }
 
-func syncApprovedProjectRequest(tx *sql.Tx, ctx pendingDecisionContext, decidedBy int) error {
+func syncApprovedProjectRequest(tx *sql.Tx, ctx pendingDecisionContext) error {
 	var existing int
 	if err := tx.QueryRow(`
 		SELECT COUNT(1)
@@ -1169,8 +1169,8 @@ func syncApprovedProjectRequest(tx *sql.Tx, ctx pendingDecisionContext, decidedB
 	`,
 		ctx.ProjectName,
 		toNullableText(ctx.ProjectDescription.String),
-		decidedBy,
-		decidedBy,
+		nil,
+		nil,
 		statusID,
 		priorityID,
 		ctx.TicketPrefix,
