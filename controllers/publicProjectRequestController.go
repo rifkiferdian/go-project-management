@@ -517,7 +517,7 @@ func storePublicProjectRequest(c *gin.Context, form map[string]string, requestDi
 		return errors.New("Gagal membuat snapshot step approval untuk request")
 	}
 
-	publicPath, storedName, err := storeProjectRequestSupportingDocument(c, requestID, file)
+	publicPath, storedName, err := storeProjectRequestSupportingDocument(c, requestID, requestNo, file)
 	if err != nil {
 		return err
 	}
@@ -748,14 +748,13 @@ func validateSupportingDocumentFile(file *multipart.FileHeader) error {
 	return errors.New("Content type dokumen harus PDF atau image")
 }
 
-func storeProjectRequestSupportingDocument(c *gin.Context, requestID int64, file *multipart.FileHeader) (string, string, error) {
+func storeProjectRequestSupportingDocument(c *gin.Context, requestID int64, requestNo string, file *multipart.FileHeader) (string, string, error) {
 	uploadDir := filepath.Join("assets", "uploads", "project_requests", strconv.FormatInt(requestID, 10))
 	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
 		return "", "", err
 	}
 
-	safeName := safeUploadFilename(file.Filename)
-	storedName := fmt.Sprintf("%d-%s", time.Now().UnixNano(), safeName)
+	storedName := buildRequestNoFilename(requestNo, file.Filename)
 	destination := filepath.Join(uploadDir, storedName)
 	if err := c.SaveUploadedFile(file, destination); err != nil {
 		return "", "", err
@@ -790,4 +789,40 @@ func removeProjectRequestSupportingDocument(publicPath string) error {
 	relative := strings.TrimPrefix(publicPath, "/")
 	relative = filepath.FromSlash(relative)
 	return os.Remove(relative)
+}
+
+func buildRequestNoFilename(requestNo, originalFilename string) string {
+	requestNo = strings.TrimSpace(requestNo)
+	if requestNo == "" {
+		requestNo = fmt.Sprintf("request-%d", time.Now().Unix())
+	}
+
+	var builder strings.Builder
+	builder.Grow(len(requestNo))
+	for _, ch := range requestNo {
+		switch {
+		case ch >= 'a' && ch <= 'z':
+			builder.WriteRune(ch)
+		case ch >= 'A' && ch <= 'Z':
+			builder.WriteRune(ch)
+		case ch >= '0' && ch <= '9':
+			builder.WriteRune(ch)
+		case ch == '-' || ch == '_':
+			builder.WriteRune(ch)
+		default:
+			builder.WriteRune('-')
+		}
+	}
+
+	safeBase := strings.Trim(builder.String(), "-_")
+	if safeBase == "" {
+		safeBase = fmt.Sprintf("request-%d", time.Now().Unix())
+	}
+
+	ext := strings.ToLower(strings.TrimSpace(filepath.Ext(originalFilename)))
+	if ext == "" {
+		ext = ".bin"
+	}
+
+	return safeBase + ext
 }
