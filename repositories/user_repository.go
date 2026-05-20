@@ -403,6 +403,75 @@ func (r *UserRepository) DeleteUser(id int) error {
 	return err
 }
 
+// GetProfileByID mengambil ringkasan profile user berdasarkan ID.
+func (r *UserRepository) GetProfileByID(id int) (models.UserProfile, error) {
+	var profile models.UserProfile
+
+	err := r.DB.QueryRow(`
+		SELECT
+			u.id,
+			u.name,
+			u.email,
+			COALESCE(u.employee_id, '') AS employee_id,
+			COALESCE(GROUP_CONCAT(DISTINCT r2.name ORDER BY r2.name SEPARATOR ', '), '') AS role_display,
+			COALESCE(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), '') AS division_display
+		FROM users u
+		LEFT JOIN model_has_roles mhr ON mhr.model_id = u.id AND mhr.model_type = ?
+		LEFT JOIN roles r2 ON r2.id = mhr.role_id
+		LEFT JOIN user_divisions ud ON ud.user_id = u.id
+		LEFT JOIN divisions d ON d.id = ud.division_id AND d.deleted_at IS NULL
+		WHERE u.id = ? AND u.deleted_at IS NULL
+		GROUP BY u.id, u.name, u.email, u.employee_id
+	`, userModelType, id).Scan(
+		&profile.ID,
+		&profile.Name,
+		&profile.Email,
+		&profile.EmployeeID,
+		&profile.RoleDisplay,
+		&profile.DivisionDisplay,
+	)
+	if err != nil {
+		return models.UserProfile{}, err
+	}
+
+	if strings.TrimSpace(profile.RoleDisplay) == "" {
+		profile.RoleDisplay = "-"
+	}
+	if strings.TrimSpace(profile.DivisionDisplay) == "" {
+		profile.DivisionDisplay = "-"
+	}
+
+	return profile, nil
+}
+
+// GetPasswordHashByID mengambil hash password user aktif.
+func (r *UserRepository) GetPasswordHashByID(id int) (string, error) {
+	var hashedPassword sql.NullString
+	err := r.DB.QueryRow(`
+		SELECT password
+		FROM users
+		WHERE id = ? AND deleted_at IS NULL
+	`, id).Scan(&hashedPassword)
+	if err != nil {
+		return "", err
+	}
+	if !hashedPassword.Valid {
+		return "", sql.ErrNoRows
+	}
+
+	return hashedPassword.String, nil
+}
+
+// UpdateUserPasswordByID memperbarui password user aktif.
+func (r *UserRepository) UpdateUserPasswordByID(id int, hashedPassword string) error {
+	_, err := r.DB.Exec(`
+		UPDATE users
+		SET password = ?, updated_at = NOW()
+		WHERE id = ? AND deleted_at IS NULL
+	`, hashedPassword, id)
+	return err
+}
+
 func splitAndTrimCSV(val string) []string {
 	val = strings.TrimSpace(val)
 	if val == "" || val == "-" {

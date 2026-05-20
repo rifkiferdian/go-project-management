@@ -21,6 +21,13 @@ func (s *UserService) GetUsers() ([]models.User, error) {
 	return s.Repo.GetAll()
 }
 
+func (s *UserService) GetProfile(userID int) (models.UserProfile, error) {
+	if userID <= 0 {
+		return models.UserProfile{}, errors.New("user tidak valid")
+	}
+	return s.Repo.GetProfileByID(userID)
+}
+
 func (s *UserService) GetDivisions() ([]models.DivisionOption, error) {
 	return s.Repo.GetDivisions()
 }
@@ -196,6 +203,44 @@ func (s *UserService) DeleteUser(id int) error {
 		return errors.New("user id tidak valid")
 	}
 	return s.Repo.DeleteUser(id)
+}
+
+// ChangePassword memvalidasi lalu memperbarui password user login.
+func (s *UserService) ChangePassword(userID int, currentPassword, newPassword, confirmPassword string) error {
+	if userID <= 0 {
+		return errors.New("user tidak valid")
+	}
+	if strings.TrimSpace(currentPassword) == "" || strings.TrimSpace(newPassword) == "" || strings.TrimSpace(confirmPassword) == "" {
+		return errors.New("semua field password wajib diisi")
+	}
+	if len(newPassword) < 5 {
+		return errors.New("password baru minimal 5 karakter")
+	}
+	if newPassword != confirmPassword {
+		return errors.New("konfirmasi password baru tidak sama")
+	}
+	if currentPassword == newPassword {
+		return errors.New("password baru harus berbeda dari password saat ini")
+	}
+
+	hashedPassword, err := s.Repo.GetPasswordHashByID(userID)
+	if err == sql.ErrNoRows {
+		return errors.New("user tidak ditemukan")
+	}
+	if err != nil {
+		return err
+	}
+
+	if bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(currentPassword)) != nil {
+		return errors.New("password saat ini salah")
+	}
+
+	newHashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return s.Repo.UpdateUserPasswordByID(userID, string(newHashedPassword))
 }
 
 func UserHasPermission(userID int, perm string) (bool, error) {

@@ -36,6 +36,16 @@ type UserUpdateInput struct {
 	RoleNames   []string
 }
 
+// UserProfile menampung data profil user login.
+type UserProfile struct {
+	ID              int
+	Name            string
+	Email           string
+	EmployeeID      string
+	RoleDisplay     string
+	DivisionDisplay string
+}
+
 // DivisionOption merepresentasikan data divisi untuk dropdown form user.
 type DivisionOption struct {
 	ID   int

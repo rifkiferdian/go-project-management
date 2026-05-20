@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{{ if .Title }}{{ .Title }}{{ else }}Profile{{ end }}</title>
+
+        <link rel="stylesheet" href="/assets/fonts/google/plus-jakarta-sans.css">
+        <link rel="stylesheet" href="/assets/css/tailwind.css">
+        <link href="/assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet" />
+    </head>
+    <body class="bg-slate-100 font-display text-slate-900">
+        <div class="flex min-h-screen">
+            {{ template "sidebar" . }}
+            <div class="flex min-h-screen min-w-0 flex-1 flex-col">
+                {{ template "header" . }}
+
+                <main class="flex-1 px-4 py-6 lg:px-8">
+                    <div class="mx-auto w-full max-w-7xl space-y-6">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Account / Profile</p>
+                            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Profile</h1>
+                        </div>
+
+                        <div class="grid gap-6 lg:grid-cols-3">
+                            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-1">
+                                <h2 class="text-base font-semibold text-slate-900">Informasi Akun</h2>
+                                <div class="mt-4 space-y-4 text-sm">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Nama</p>
+                                        <p class="mt-1 font-medium text-slate-800">{{ .Profile.Name }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Email</p>
+                                        <p class="mt-1 text-slate-700">{{ .Profile.Email }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Employee ID</p>
+                                        <p class="mt-1 text-slate-700">{{ if .Profile.EmployeeID }}{{ .Profile.EmployeeID }}{{ else }}-{{ end }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Role</p>
+                                        <p class="mt-1 text-slate-700">{{ .Profile.RoleDisplay }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Divisi</p>
+                                        <p class="mt-1 text-slate-700">{{ .Profile.DivisionDisplay }}</p>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+                                <h2 class="text-base font-semibold text-slate-900">Ubah Password</h2>
+                                <p class="mt-1 text-sm text-slate-500">Masukkan password lama, lalu password baru Anda.</p>
+
+                                {{ if .Error }}
+                                <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{{ .Error }}</div>
+                                {{ end }}
+                                {{ if .Success }}
+                                <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ .Success }}</div>
+                                {{ end }}
+
+                                <form action="/profile/password" method="post" class="mt-6 space-y-4">
+                                    <div>
+                                        <label for="current_password" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Password Saat Ini</label>
+                                        <input id="current_password" name="current_password" type="password" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500">
+                                    </div>
+                                    <div class="grid gap-4 md:grid-cols-2">
+                                        <div>
+                                            <label for="new_password" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Password Baru</label>
+                                            <input id="new_password" name="new_password" type="password" required minlength="5" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500">
+                                        </div>
+                                        <div>
+                                            <label for="confirm_password" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Konfirmasi Password Baru</label>
+                                            <input id="confirm_password" name="confirm_password" type="password" required minlength="5" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500">
+                                        </div>
+                                    </div>
+                                    <div class="pt-2">
+                                        <button type="submit" class="inline-flex items-center rounded-xl bg-[#f26419] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#dc5a15]">
+                                            Simpan Password
+                                        </button>
+                                    </div>
+                                </form>
+                            </section>
+                        </div>
+                    </div>
+                </main>
+
+                {{ template "footer" . }}
+            </div>
+        </div>
+
+        <div id="sidebar-overlay" class="fixed inset-0 z-40 hidden bg-slate-900/50 lg:hidden"></div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var sidebar = document.getElementById('app-sidebar');
+                var overlay = document.getElementById('sidebar-overlay');
+                var toggleButtons = document.querySelectorAll('[data-sidebar-toggle]');
+
+                function closeSidebar() {
+                    if (!sidebar) return;
+                    sidebar.classList.add('-translate-x-full');
+                    if (overlay) overlay.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                }
+
+                function openSidebar() {
+                    if (!sidebar) return;
+                    sidebar.classList.remove('-translate-x-full');
+                    if (overlay) overlay.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                }
+
+                toggleButtons.forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        if (sidebar.classList.contains('-translate-x-full')) openSidebar(); else closeSidebar();
+                    });
+                });
+
+                if (overlay) {
+                    overlay.addEventListener('click', closeSidebar);
+                }
+            });
+        </script>
+    </body>
+</html>
