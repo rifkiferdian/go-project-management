@@ -19,6 +19,7 @@ func PublicHomePage(c *gin.Context) {
 		totalInProgressProjects     int
 		totalImplementationProjects int
 	)
+	projectRoadmapFormat := normalizeRoadmapFormat(c.DefaultQuery("project_format", "week"))
 
 	if err := config.DB.QueryRow(`SELECT COUNT(1) FROM projects WHERE deleted_at IS NULL`).Scan(&totalProjects); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
@@ -93,6 +94,14 @@ func PublicHomePage(c *gin.Context) {
 		return
 	}
 
+	svc := managementService()
+	projectPeriods, err := svc.GetRoadmapProjectPeriods()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	projectPeriodWeeks, projectPeriodYearGroups, projectPeriodRows, projectPeriodTimelineWidth, projectPeriodColumnWidth, projectPeriodCurrentMarkerLeft, projectPeriodCurrentMarkerWidth, projectPeriodRangeLabel := buildRoadmapProjectPeriodTimeline(projectPeriods, roadmapNow(), projectRoadmapFormat)
+
 	Render(c, "public_home.html", gin.H{
 		"Title":                       "Home",
 		"Page":                        "home",
@@ -108,6 +117,15 @@ func PublicHomePage(c *gin.Context) {
 		"KanbanStatuses":              kanbanStatuses,
 		"KanbanProjects":              kanbanProjects,
 		"RecentTicketActivities":      recentTicketActivities,
+		"ProjectRoadmapFormat":        projectRoadmapFormat,
+		"ProjectPeriodWeeks":          projectPeriodWeeks,
+		"ProjectPeriodYearGroups":     projectPeriodYearGroups,
+		"ProjectPeriodRows":           projectPeriodRows,
+		"ProjectPeriodTimelineWidth":  projectPeriodTimelineWidth,
+		"ProjectPeriodColumnWidth":    projectPeriodColumnWidth,
+		"ProjectPeriodCurrentMarkerLeft":  projectPeriodCurrentMarkerLeft,
+		"ProjectPeriodCurrentMarkerWidth": projectPeriodCurrentMarkerWidth,
+		"ProjectPeriodRange":          projectPeriodRangeLabel,
 	})
 }
 

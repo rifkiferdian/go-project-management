@@ -9,6 +9,136 @@
         <link rel="stylesheet" href="/assets/css/tailwind.css">
         <link href="/assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet" />
         <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+        <style>
+            .ph-gantt-shell {
+                width: 100%;
+                overflow: hidden;
+                border: 1px solid #dbe3ef;
+                border-radius: 16px;
+                background: #fff;
+            }
+            .ph-gantt-wrap {
+                display: flex;
+            }
+            .ph-gantt-left {
+                width: 560px;
+                flex: 0 0 560px;
+                border-right: 1px solid #dbe3ef;
+            }
+            .ph-gantt-right {
+                min-width: 0;
+                flex: 1 1 auto;
+            }
+            .ph-task-table,
+            .ph-chart-table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+            }
+            .ph-task-table th,
+            .ph-task-table td,
+            .ph-chart-table td {
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .ph-task-table th {
+                height: 34px;
+                padding: 0 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: .06em;
+                color: #64748b;
+                text-align: left;
+            }
+            .ph-task-table td {
+                height: 34px;
+                padding: 0 10px;
+                font-size: 13px;
+                color: #334155;
+            }
+            .ph-task-name {
+                width: 240px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-weight: 600;
+            }
+            .ph-chart-scroll {
+                overflow-x: auto;
+                overflow-y: hidden;
+            }
+            .ph-chart-canvas {
+                position: relative;
+            }
+            .ph-year-head,
+            .ph-date-head {
+                border-left: 1px solid #e2e8f0;
+                text-align: center;
+                color: #64748b;
+                font-weight: 700;
+            }
+            .ph-year-head div {
+                height: 28px;
+                line-height: 28px;
+                font-size: 12px;
+            }
+            .ph-date-head div {
+                height: 36px;
+                line-height: 36px;
+                font-size: 12px;
+            }
+            .ph-chart-row {
+                position: relative;
+                height: 34px;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .ph-chart-grid {
+                position: absolute;
+                inset: 0;
+                background-repeat: repeat;
+            }
+            .ph-bar-wrap {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                height: 22px;
+            }
+            .ph-bar {
+                height: 22px;
+                border-radius: 2px;
+                background: #4f88eb;
+                overflow: hidden;
+            }
+            .ph-bar-fill {
+                width: 100%;
+                height: 100%;
+                background: #35c65a;
+            }
+            .ph-current-marker {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                width: 2px;
+                background: #7c3aed;
+                transform: translateX(-1px);
+                opacity: 0;
+                z-index: 20;
+                pointer-events: none;
+            }
+            .ph-current-marker.is-visible {
+                opacity: 1;
+            }
+            .ph-format a {
+                padding: 2px 7px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #64748b;
+            }
+            .ph-format a.active {
+                background: #ede9fe;
+                color: #6d28d9;
+            }
+        </style>
     </head>
     <body class="min-h-screen bg-slate-100 font-display text-slate-900">
         <div class="min-h-screen" style="background: radial-gradient(circle at top left, rgba(242, 100, 25, 0.12), transparent 24%), linear-gradient(180deg, #fff7ed 0%, #f8fafc 22%, #f1f5f9 100%);">
@@ -193,6 +323,91 @@
                                 </div>
                                 {{ else }}
                                 <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">Belum ada status project untuk kanban.</div>
+                                {{ end }}
+                            </div>
+                        </div>
+
+                        <div class="mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div class="flex items-center gap-3">
+                                    <h3 class="text-base font-semibold text-slate-900">Roadmap Project (Start - End)</h3>
+                                    {{ if .ProjectPeriodRange }}
+                                    <span class="text-xs font-semibold text-slate-400">{{ .ProjectPeriodRange }}</span>
+                                    {{ end }}
+                                </div>
+                                <div class="ph-format inline-flex items-center gap-1">
+                                    <a href="/home?project_format=day" class="{{ if eq .ProjectRoadmapFormat "day" }}active{{ end }}">Day</a>
+                                    <a href="/home?project_format=week" class="{{ if eq .ProjectRoadmapFormat "week" }}active{{ end }}">Week</a>
+                                    <a href="/home?project_format=month" class="{{ if eq .ProjectRoadmapFormat "month" }}active{{ end }}">Month</a>
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                {{ if .ProjectPeriodRows }}
+                                <div class="ph-gantt-shell">
+                                    <div class="ph-gantt-wrap">
+                                        <div class="ph-gantt-left">
+                                            <table class="ph-task-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="ph-task-name">Project</th>
+                                                        <th>Start</th>
+                                                        <th>End</th>
+                                                        <th>Durasi</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {{ range .ProjectPeriodRows }}
+                                                    <tr>
+                                                        <td class="ph-task-name">{{ .ProjectName }}</td>
+                                                        <td>{{ .StartDateLabel }}</td>
+                                                        <td>{{ .EndDateLabel }}</td>
+                                                        <td>{{ .DurationLabel }}</td>
+                                                    </tr>
+                                                    {{ end }}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="ph-gantt-right">
+                                            <div class="ph-chart-scroll">
+                                                <div id="public-project-roadmap-canvas" class="ph-chart-canvas" style="width: {{ .ProjectPeriodTimelineWidth }}px;">
+                                                    <div id="public-project-roadmap-current-marker" class="ph-current-marker" aria-hidden="true"></div>
+                                                    <table class="ph-chart-table" style="width: {{ .ProjectPeriodTimelineWidth }}px;">
+                                                        <tbody>
+                                                            <tr>
+                                                                {{ range .ProjectPeriodYearGroups }}
+                                                                <td class="ph-year-head" colspan="{{ .Count }}"><div style="width: {{ .WidthPx }}px;">{{ .Label }}</div></td>
+                                                                {{ end }}
+                                                            </tr>
+                                                            <tr>
+                                                                {{ range .ProjectPeriodWeeks }}
+                                                                <td class="ph-date-head"><div style="width: {{ $.ProjectPeriodColumnWidth }}px;">{{ .DateLabel }}</div></td>
+                                                                {{ end }}
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                    <div>
+                                                        {{ range .ProjectPeriodRows }}
+                                                        <div class="ph-chart-row">
+                                                            <div class="ph-chart-grid" style="background-image: repeating-linear-gradient(to right, rgba(226, 232, 240, 0.95) 0, rgba(226, 232, 240, 0.95) 1px, transparent 1px, transparent {{ $.ProjectPeriodColumnWidth }}px);"></div>
+                                                            {{ if .ShowBar }}
+                                                            <div class="ph-bar-wrap" style="left: {{ .BarLeftPx }}px; width: {{ .BarWidthPx }}px;">
+                                                                <div class="ph-bar" style="width: {{ .BarWidthPx }}px;">
+                                                                    <div class="ph-bar-fill"></div>
+                                                                </div>
+                                                            </div>
+                                                            {{ end }}
+                                                        </div>
+                                                        {{ end }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{ else }}
+                                <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+                                    Belum ada data project dengan start date dan end date.
+                                </div>
                                 {{ end }}
                             </div>
                         </div>
@@ -432,6 +647,21 @@
                     } else {
                         divisionChartEl.classList.add('hidden');
                         if (divisionEmptyEl) divisionEmptyEl.classList.remove('hidden');
+                    }
+                }
+
+                var publicProjectRoadmapCanvas = document.getElementById('public-project-roadmap-canvas');
+                var publicProjectRoadmapMarker = document.getElementById('public-project-roadmap-current-marker');
+                if (publicProjectRoadmapCanvas && publicProjectRoadmapMarker) {
+                    var markerLeft = {{ .ProjectPeriodCurrentMarkerLeft }};
+                    var markerWidth = {{ .ProjectPeriodCurrentMarkerWidth }};
+                    var canvasWidth = publicProjectRoadmapCanvas.offsetWidth;
+                    if (canvasWidth > 0) {
+                        var lineX = markerLeft + (markerWidth / 2);
+                        if (lineX < 0) lineX = 0;
+                        if (lineX > canvasWidth) lineX = canvasWidth;
+                        publicProjectRoadmapMarker.style.left = lineX + 'px';
+                        publicProjectRoadmapMarker.classList.add('is-visible');
                     }
                 }
             });
