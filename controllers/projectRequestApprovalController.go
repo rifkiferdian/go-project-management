@@ -97,7 +97,21 @@ func ProjectRequestManageIndex(c *gin.Context) {
 	}
 
 	keyword := strings.TrimSpace(c.Query("q"))
-	rows, err := getManagerProjectRequestRows(userID, keyword)
+	divisionID := 0
+	if rawDivisionID := strings.TrimSpace(c.Query("division_id")); rawDivisionID != "" {
+		parsedDivisionID, err := strconv.Atoi(rawDivisionID)
+		if err == nil && parsedDivisionID > 0 {
+			divisionID = parsedDivisionID
+		}
+	}
+
+	divisionOptions, err := getPublicDivisionOptions()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rows, err := getManagerProjectRequestRows(userID, keyword, divisionID)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -109,6 +123,8 @@ func ProjectRequestManageIndex(c *gin.Context) {
 		"Rows":    rows,
 		"IsAdmin": currentUserHasRole(c, "admin"),
 		"Keyword": keyword,
+		"DivisionOptions": divisionOptions,
+		"DivisionID":      divisionID,
 		"Error":   strings.TrimSpace(c.Query("error")),
 		"Success": strings.TrimSpace(c.Query("success")),
 	})
@@ -262,7 +278,7 @@ func redirectAfterProjectRequestAction(c *gin.Context, requestID int64, errMsg, 
 	redirectProjectRequestManage(c, errMsg, successMsg)
 }
 
-func getManagerProjectRequestRows(userID int, keyword string) ([]managerProjectRequestItem, error) {
+func getManagerProjectRequestRows(userID int, keyword string, divisionID int) ([]managerProjectRequestItem, error) {
 	query := `
 		SELECT
 			pr.id,
@@ -362,6 +378,12 @@ func getManagerProjectRequestRows(userID int, keyword string) ([]managerProjectR
 		`
 		like := "%" + keyword + "%"
 		args = append(args, like, like, like, like)
+	}
+	if divisionID > 0 {
+		query += `
+			AND pr.request_division_id = ?
+		`
+		args = append(args, divisionID)
 	}
 
 	query += `

@@ -16,7 +16,7 @@
             <div class="flex min-h-screen min-w-0 flex-1 flex-col">
                 {{ template "header" . }}
                 <main class="flex-1 px-4 py-6 lg:px-8">
-                    <div class="mx-auto w-full max-w-7xl space-y-6">
+                    <div class="mx-auto w-full max-w-screen-2xl space-y-6">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-[0.22em] text-orange-500">Approval Queue</p>
@@ -27,14 +27,23 @@
 
                         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
                             <div class="border-b border-slate-100 px-4 py-4">
-                                <form action="/project-requests/manage" method="get" class="flex w-full max-w-xl flex-col gap-3 sm:flex-row">
+                                <form action="/project-requests/manage" method="get" class="flex w-full max-w-4xl flex-col gap-3 sm:flex-row sm:flex-wrap">
                                     <input
                                         type="text"
                                         name="q"
                                         value="{{ .Keyword }}"
                                         placeholder="Cari request no / nama project / employee id"
-                                        class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200/60"
+                                        class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200/60 sm:flex-1"
                                     >
+                                    <select
+                                        name="division_id"
+                                        class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200/60 sm:w-64"
+                                    >
+                                        <option value="">Semua Divisi</option>
+                                        {{ range .DivisionOptions }}
+                                        <option value="{{ .ID }}" {{ if eq $.DivisionID .ID }}selected{{ end }}>{{ .Name }}</option>
+                                        {{ end }}
+                                    </select>
                                     <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f26419] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#dc5a15]">
                                         <i class="bx bx-search"></i>
                                         Cari
