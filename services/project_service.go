@@ -7,6 +7,7 @@ import (
 	"gobase-app/models"
 	"gobase-app/repositories"
 	"strings"
+	"time"
 )
 
 type ProjectService struct {
@@ -75,6 +76,17 @@ func (s *ProjectService) validateCreateInput(input models.ProjectCreateInput) (m
 	statusType := normalizeProjectStatusType(input.StatusType)
 	projectType := normalizeProjectType(input.Type)
 	divisionIDs := uniqueInt64s(input.DivisionIDs)
+	startDate, err := normalizeProjectDate(input.StartDate)
+	if err != nil {
+		return input, err
+	}
+	endDate, err := normalizeProjectDate(input.EndDate)
+	if err != nil {
+		return input, err
+	}
+	if err := validateProjectDateRange(startDate, endDate); err != nil {
+		return input, err
+	}
 
 	if name == "" {
 		return input, errors.New("nama project wajib diisi")
@@ -130,6 +142,8 @@ func (s *ProjectService) validateCreateInput(input models.ProjectCreateInput) (m
 
 	input.Name = name
 	input.Description = description
+	input.StartDate = startDate
+	input.EndDate = endDate
 	input.DivisionIDs = divisionIDs
 	input.TicketPrefix = prefix
 	input.StatusType = statusType
@@ -148,6 +162,17 @@ func (s *ProjectService) validateUpdateInput(input models.ProjectUpdateInput) (m
 	statusType := normalizeProjectStatusType(input.StatusType)
 	projectType := normalizeProjectType(input.Type)
 	divisionIDs := uniqueInt64s(input.DivisionIDs)
+	startDate, err := normalizeProjectDate(input.StartDate)
+	if err != nil {
+		return input, err
+	}
+	endDate, err := normalizeProjectDate(input.EndDate)
+	if err != nil {
+		return input, err
+	}
+	if err := validateProjectDateRange(startDate, endDate); err != nil {
+		return input, err
+	}
 
 	if name == "" {
 		return input, errors.New("nama project wajib diisi")
@@ -203,11 +228,45 @@ func (s *ProjectService) validateUpdateInput(input models.ProjectUpdateInput) (m
 
 	input.Name = name
 	input.Description = description
+	input.StartDate = startDate
+	input.EndDate = endDate
 	input.DivisionIDs = divisionIDs
 	input.TicketPrefix = prefix
 	input.StatusType = statusType
 	input.Type = projectType
 	return input, nil
+}
+
+func normalizeProjectDate(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", nil
+	}
+
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return "", errors.New("format tanggal project harus YYYY-MM-DD")
+	}
+	return parsed.Format("2006-01-02"), nil
+}
+
+func validateProjectDateRange(startDate, endDate string) error {
+	if startDate == "" || endDate == "" {
+		return nil
+	}
+
+	start, err := time.Parse("2006-01-02", startDate)
+	if err != nil {
+		return errors.New("format start date tidak valid")
+	}
+	end, err := time.Parse("2006-01-02", endDate)
+	if err != nil {
+		return errors.New("format end date tidak valid")
+	}
+	if end.Before(start) {
+		return errors.New("end date tidak boleh lebih kecil dari start date")
+	}
+	return nil
 }
 
 func normalizeProjectType(value string) string {

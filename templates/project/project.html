@@ -95,7 +95,7 @@
                                                     <td class="px-3 py-3">
                                                         <div class="flex flex-wrap items-center gap-2">
                                                             {{ if index $.Permissions "Update project" }}
-                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-developer-id="{{ $project.DeveloperID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
+                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-developer-id="{{ $project.DeveloperID }}" data-start-date="{{ $project.StartDate }}" data-end-date="{{ $project.EndDate }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
                                                             </button>
@@ -181,7 +181,7 @@
                                                         </div>
                                                         <div class="mt-4 flex flex-wrap items-center gap-2">
                                                             {{ if index $.Permissions "Update project" }}
-                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-developer-id="{{ $project.DeveloperID }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
+                                                            <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 btn-edit-project" data-project-id="{{ $project.ID }}" data-name="{{ $project.Name }}" data-description="{{ $project.Description }}" data-owner-id="{{ $project.OwnerID }}" data-developer-id="{{ $project.DeveloperID }}" data-start-date="{{ $project.StartDate }}" data-end-date="{{ $project.EndDate }}" data-request-divisions="{{ range $idx, $divisionID := $project.RequestDivisionIDs }}{{ if $idx }},{{ end }}{{ $divisionID }}{{ end }}" data-status-id="{{ $project.StatusID }}" data-priority-id="{{ $project.PriorityID }}" data-ticket-prefix="{{ $project.TicketPrefix }}" data-status-type="{{ $project.StatusType }}" data-type="{{ $project.Type }}">
                                                                 <i class="bx bx-pen text-sm"></i>
                                                                 Edit
                                                             </button>
@@ -240,6 +240,14 @@
                             <div>
                                 <label for="ticket_prefix" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ticket Prefix</label>
                                 <input type="text" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm uppercase outline-none focus:border-brand-500" id="ticket_prefix" name="ticket_prefix" maxlength="3" value="{{ with .Old }}{{ .TicketPrefix }}{{ end }}" required>
+                            </div>
+                            <div>
+                                <label for="start_date" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Start Project</label>
+                                <input type="date" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" id="start_date" name="start_date" value="{{ with .Old }}{{ .StartDate }}{{ end }}">
+                            </div>
+                            <div>
+                                <label for="end_date" class="text-xs font-semibold uppercase tracking-wider text-slate-500">End Project</label>
+                                <input type="date" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" id="end_date" name="end_date" value="{{ with .Old }}{{ .EndDate }}{{ end }}">
                             </div>
                         </div>
                         <div class="space-y-4">
@@ -333,6 +341,14 @@
                             <div>
                                 <label for="edit_ticket_prefix" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ticket Prefix</label>
                                 <input type="text" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm uppercase outline-none focus:border-brand-500" id="edit_ticket_prefix" name="ticket_prefix" maxlength="3" required>
+                            </div>
+                            <div>
+                                <label for="edit_start_date" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Start Project</label>
+                                <input type="date" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" id="edit_start_date" name="start_date">
+                            </div>
+                            <div>
+                                <label for="edit_end_date" class="text-xs font-semibold uppercase tracking-wider text-slate-500">End Project</label>
+                                <input type="date" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" id="edit_end_date" name="end_date">
                             </div>
                         </div>
                         <div class="space-y-4">
@@ -521,6 +537,8 @@
                         modal.querySelector('#edit_status_id').value = btn.getAttribute('data-status-id') || '';
                         modal.querySelector('#edit_priority_id').value = btn.getAttribute('data-priority-id') || '';
                         modal.querySelector('#edit_ticket_prefix').value = btn.getAttribute('data-ticket-prefix') || '';
+                        modal.querySelector('#edit_start_date').value = btn.getAttribute('data-start-date') || '';
+                        modal.querySelector('#edit_end_date').value = btn.getAttribute('data-end-date') || '';
                         modal.querySelector('#edit_status_type').value = btn.getAttribute('data-status-type') || 'default';
                         modal.querySelector('#edit_type').value = btn.getAttribute('data-type') || 'kanban';
                         openModal('projectEditModal');

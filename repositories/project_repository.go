@@ -22,6 +22,8 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 				COALESCE(u.name, '-') AS owner_name,
 				COALESCE(p.developer_id, 0) AS developer_id,
 				COALESCE(dev.name, '-') AS developer_name,
+				COALESCE(DATE_FORMAT(p.start_date, '%Y-%m-%d'), '') AS start_date,
+				COALESCE(DATE_FORMAT(p.end_date, '%Y-%m-%d'), '') AS end_date,
 				COALESCE(GROUP_CONCAT(DISTINCT d.id ORDER BY d.id SEPARATOR ','), '') AS request_division_ids_csv,
 				COALESCE(GROUP_CONCAT(DISTINCT d.name ORDER BY d.name SEPARATOR ', '), '-') AS request_division,
 				p.status_id,
@@ -47,7 +49,7 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 		LEFT JOIN tickets t ON t.project_id = p.id AND t.deleted_at IS NULL
 		WHERE p.deleted_at IS NULL
 			GROUP BY
-				p.id, p.name, p.description, p.owner_id, u.name, p.developer_id, dev.name, p.status_id, ps.name, ps.color, p.priority_id, pp.name, pp.color,
+				p.id, p.name, p.description, p.owner_id, u.name, p.developer_id, dev.name, p.start_date, p.end_date, p.status_id, ps.name, ps.color, p.priority_id, pp.name, pp.color,
 				p.ticket_prefix, p.status_type, p.type, p.created_at
 			ORDER BY p.created_at DESC
 		`)
@@ -72,6 +74,8 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 			&project.OwnerName,
 			&project.DeveloperID,
 			&project.DeveloperName,
+			&project.StartDate,
+			&project.EndDate,
 			&requestDivisionIDsCSV,
 			&project.RequestDivision,
 			&project.StatusID,
@@ -109,6 +113,8 @@ func (r *ProjectRepository) GetByID(id int) (*models.Project, error) {
 				COALESCE(description, '') AS description,
 				COALESCE(owner_id, 0) AS owner_id,
 				COALESCE(developer_id, 0) AS developer_id,
+				COALESCE(DATE_FORMAT(start_date, '%Y-%m-%d'), '') AS start_date,
+				COALESCE(DATE_FORMAT(end_date, '%Y-%m-%d'), '') AS end_date,
 				status_id,
 				COALESCE(priority_id, 0) AS priority_id,
 				ticket_prefix,
@@ -122,6 +128,8 @@ func (r *ProjectRepository) GetByID(id int) (*models.Project, error) {
 		&project.Description,
 		&project.OwnerID,
 		&project.DeveloperID,
+		&project.StartDate,
+		&project.EndDate,
 		&project.StatusID,
 		&project.PriorityID,
 		&project.TicketPrefix,
@@ -153,9 +161,9 @@ func (r *ProjectRepository) Create(params models.ProjectCreateInput) error {
 	}
 
 	res, err := tx.Exec(`
-			INSERT INTO projects (name, description, owner_id, developer_id, status_id, priority_id, ticket_prefix, status_type, type, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-		`, params.Name, params.Description, params.OwnerID, params.DeveloperID, params.StatusID, params.PriorityID, params.TicketPrefix, params.StatusType, params.Type)
+			INSERT INTO projects (name, description, owner_id, developer_id, start_date, end_date, status_id, priority_id, ticket_prefix, status_type, type, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+		`, params.Name, params.Description, params.OwnerID, params.DeveloperID, nullableProjectDate(params.StartDate), nullableProjectDate(params.EndDate), params.StatusID, params.PriorityID, params.TicketPrefix, params.StatusType, params.Type)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -183,9 +191,9 @@ func (r *ProjectRepository) Update(params models.ProjectUpdateInput) error {
 
 	if _, err := tx.Exec(`
 			UPDATE projects
-			SET name = ?, description = ?, owner_id = ?, developer_id = ?, status_id = ?, priority_id = ?, ticket_prefix = ?, status_type = ?, type = ?, updated_at = NOW()
+			SET name = ?, description = ?, owner_id = ?, developer_id = ?, start_date = ?, end_date = ?, status_id = ?, priority_id = ?, ticket_prefix = ?, status_type = ?, type = ?, updated_at = NOW()
 			WHERE id = ? AND deleted_at IS NULL
-		`, params.Name, params.Description, params.OwnerID, params.DeveloperID, params.StatusID, params.PriorityID, params.TicketPrefix, params.StatusType, params.Type, params.ID); err != nil {
+		`, params.Name, params.Description, params.OwnerID, params.DeveloperID, nullableProjectDate(params.StartDate), nullableProjectDate(params.EndDate), params.StatusID, params.PriorityID, params.TicketPrefix, params.StatusType, params.Type, params.ID); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -414,4 +422,12 @@ func (r *ProjectRepository) replaceProjectDivisions(tx *sql.Tx, projectID int, d
 	}
 
 	return nil
+}
+
+func nullableProjectDate(value string) interface{} {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return value
 }

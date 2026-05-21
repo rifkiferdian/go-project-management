@@ -26,6 +26,8 @@ func ProjectStore(c *gin.Context) {
 		Description  string `form:"description"`
 		OwnerID      int    `form:"owner_id" binding:"required"`
 		DeveloperID  int    `form:"developer_id" binding:"required"`
+		StartDate    string `form:"start_date"`
+		EndDate      string `form:"end_date"`
 		StatusID     int    `form:"status_id" binding:"required"`
 		PriorityID   int    `form:"priority_id" binding:"required"`
 		TicketPrefix string `form:"ticket_prefix" binding:"required"`
@@ -55,6 +57,8 @@ func ProjectStore(c *gin.Context) {
 		Description:  strings.TrimSpace(form.Description),
 		OwnerID:      form.OwnerID,
 		DeveloperID:  form.DeveloperID,
+		StartDate:    strings.TrimSpace(form.StartDate),
+		EndDate:      strings.TrimSpace(form.EndDate),
 		DivisionIDs:  divisionIDs,
 		StatusID:     form.StatusID,
 		PriorityID:   form.PriorityID,
@@ -69,6 +73,8 @@ func ProjectStore(c *gin.Context) {
 			Description:        input.Description,
 			OwnerID:            input.OwnerID,
 			DeveloperID:        input.DeveloperID,
+			StartDate:          input.StartDate,
+			EndDate:            input.EndDate,
 			RequestDivisionIDs: ints64ToInts(input.DivisionIDs),
 			StatusID:           input.StatusID,
 			PriorityID:         input.PriorityID,
@@ -89,6 +95,8 @@ func ProjectUpdate(c *gin.Context) {
 		Description  string `form:"description"`
 		OwnerID      int    `form:"owner_id" binding:"required"`
 		DeveloperID  int    `form:"developer_id" binding:"required"`
+		StartDate    string `form:"start_date"`
+		EndDate      string `form:"end_date"`
 		StatusID     int    `form:"status_id" binding:"required"`
 		PriorityID   int    `form:"priority_id" binding:"required"`
 		TicketPrefix string `form:"ticket_prefix" binding:"required"`
@@ -119,6 +127,8 @@ func ProjectUpdate(c *gin.Context) {
 		Description:  strings.TrimSpace(form.Description),
 		OwnerID:      form.OwnerID,
 		DeveloperID:  form.DeveloperID,
+		StartDate:    strings.TrimSpace(form.StartDate),
+		EndDate:      strings.TrimSpace(form.EndDate),
 		DivisionIDs:  divisionIDs,
 		StatusID:     form.StatusID,
 		PriorityID:   form.PriorityID,
@@ -134,6 +144,8 @@ func ProjectUpdate(c *gin.Context) {
 			Description:        input.Description,
 			OwnerID:            input.OwnerID,
 			DeveloperID:        input.DeveloperID,
+			StartDate:          input.StartDate,
+			EndDate:            input.EndDate,
 			RequestDivisionIDs: ints64ToInts(input.DivisionIDs),
 			StatusID:           input.StatusID,
 			PriorityID:         input.PriorityID,
