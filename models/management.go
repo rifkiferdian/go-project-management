@@ -300,6 +300,16 @@ type RoadmapTicket struct {
 	EndsAt       string
 }
 
+// RoadmapProjectPeriod merepresentasikan range tanggal project (start/end) untuk timeline level project.
+type RoadmapProjectPeriod struct {
+	ProjectID   int
+	ProjectName string
+	StartsAtISO string
+	EndsAtISO   string
+	StartsAt    string
+	EndsAt      string
+}
+
 // RoadmapEpicCreateInput menampung input pembuatan epic dari halaman roadmap.
 type RoadmapEpicCreateInput struct {
 	ProjectID int

@@ -316,6 +316,10 @@ func (s *ManagementService) GetRoadmapProjectOptions() ([]models.ProjectOption, 
 	return s.Repo.GetRoadmapProjectOptions()
 }
 
+func (s *ManagementService) GetRoadmapProjectPeriods() ([]models.RoadmapProjectPeriod, error) {
+	return s.Repo.GetRoadmapProjectPeriods()
+}
+
 func (s *ManagementService) GetRoadmapEpicOptions() ([]models.RoadmapEpicOption, error) {
 	return s.Repo.GetRoadmapEpicOptions()
 }

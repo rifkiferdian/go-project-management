@@ -218,6 +218,115 @@
                         </div>
 
                         <section class="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                    <h3 class="text-sm font-semibold text-slate-800">Roadmap Project (Start - End)</h3>
+                                    {{ if .ProjectPeriodRange }}
+                                    <span class="text-xs font-semibold text-slate-500">{{ .ProjectPeriodRange }}</span>
+                                    {{ end }}
+                                </div>
+
+                                {{ if .ProjectPeriodRows }}
+                                <div class="gantt-shell">
+                                    <div class="gchartcontainer">
+                                        <div class="gmainleft">
+                                            <table class="gtasktableh">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="gtasklist">&nbsp;</td>
+                                                        <td class="gspanning gtaskname" colspan="4">
+                                                            <div class="gselector">
+                                                                <span>Format:</span>
+                                                                <a href="/road-map?format=day{{ if gt .SelectedProjectID 0 }}&project_id={{ .SelectedProjectID }}{{ end }}" class="gformlabel {{ if eq .Format "day" }}gselected{{ end }}">Day</a>
+                                                                <a href="/road-map?format=week{{ if gt .SelectedProjectID 0 }}&project_id={{ .SelectedProjectID }}{{ end }}" class="gformlabel {{ if eq .Format "week" }}gselected{{ end }}">Week</a>
+                                                                <a href="/road-map?format=month{{ if gt .SelectedProjectID 0 }}&project_id={{ .SelectedProjectID }}{{ end }}" class="gformlabel {{ if eq .Format "month" }}gselected{{ end }}">Month</a>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="gtasklist">&nbsp;</td>
+                                                        <td class="gtaskheading gtaskname">Project</td>
+                                                        <td class="gtaskheading gstartdate">Start Date</td>
+                                                        <td class="gtaskheading genddate">End Date</td>
+                                                        <td class="gtaskheading gcomp">Durasi</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                            <table class="gtasktable">
+                                                <tbody>
+                                                    {{ range .ProjectPeriodRows }}
+                                                    <tr class="glineitem">
+                                                        <td class="gtasklist">&nbsp;</td>
+                                                        <td class="gtaskname gtasknamecell">
+                                                            <div class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{{ .ProjectName }}</div>
+                                                        </td>
+                                                        <td class="gstartdate gtaskdatacell text-center font-semibold">{{ .StartDateLabel }}</td>
+                                                        <td class="genddate gtaskdatacell text-center font-semibold">{{ .EndDateLabel }}</td>
+                                                        <td class="gcomp gtaskdatacell text-center font-semibold">{{ .DurationLabel }}</td>
+                                                    </tr>
+                                                    {{ end }}
+                                                    <tr>
+                                                        <td class="gtasklist">&nbsp;</td>
+                                                        <td class="gfooterblank" colspan="4">&nbsp;</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="gmainright">
+                                            <div class="gchart-scroll">
+                                                <div id="project-roadmap-canvas" class="gchart-canvas" style="width: {{ .ProjectPeriodTimelineWidth }}px;">
+                                                    <div id="project-roadmap-current-marker" class="gcurrent-marker" aria-hidden="true"></div>
+                                                    <table class="gcharttableh" style="width: {{ .ProjectPeriodTimelineWidth }}px;">
+                                                        <tbody>
+                                                            <tr>
+                                                                {{ range .ProjectPeriodYearGroups }}
+                                                                <td class="gmajorheading" colspan="{{ .Count }}"><div style="width: {{ .WidthPx }}px;">{{ .Label }}</div></td>
+                                                                {{ end }}
+                                                            </tr>
+                                                            <tr class="footerdays">
+                                                                {{ range .ProjectPeriodWeeks }}
+                                                                <td class="gminorheading"><div style="width: {{ $.ProjectPeriodColumnWidth }}px;">{{ .DateLabel }}</div></td>
+                                                                {{ end }}
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                    <div>
+                                                        {{ range .ProjectPeriodRows }}
+                                                        <div class="gchart-row glineitem">
+                                                            <div class="gchart-grid" style="background-image: repeating-linear-gradient(to right, rgba(226, 232, 240, 0.95) 0, rgba(226, 232, 240, 0.95) 1px, transparent 1px, transparent {{ $.ProjectPeriodColumnWidth }}px);"></div>
+                                                            {{ if .ShowBar }}
+                                                            <div class="gtaskbarcontainer" style="left: {{ .BarLeftPx }}px; width: {{ .BarWidthPx }}px;">
+                                                                <div class="g-custom-task" style="width: {{ .BarWidthPx }}px; background: #4f88eb;">
+                                                                    <div class="g-custom-taskcomplete" style="width: 100%; background: #35c65a;"></div>
+                                                                </div>
+                                                            </div>
+                                                            {{ end }}
+                                                        </div>
+                                                        {{ end }}
+                                                    </div>
+                                                    <table class="gcharttablef" style="width: {{ .ProjectPeriodTimelineWidth }}px;">
+                                                        <tfoot>
+                                                            <tr class="footerdays">
+                                                                {{ range .ProjectPeriodWeeks }}
+                                                                <td class="gminorheading"><div style="width: {{ $.ProjectPeriodColumnWidth }}px;">{{ .DateLabel }}</div></td>
+                                                                {{ end }}
+                                                            </tr>
+                                                        </tfoot>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{ else }}
+                                <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                                    Belum ada data project dengan start date dan end date.
+                                </div>
+                                {{ end }}
+                            </div>
+                        </section>
+
+                        <section class="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
                             {{ if .RoadmapError }}
                             <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{{ .RoadmapError }}</div>
                             {{ end }}
@@ -304,7 +413,7 @@
 
                                     <div class="gmainright">
                                         <div id="roadmap-scroll" class="gchart-scroll">
-                                            <div class="gchart-canvas" style="width: {{ .TimelineWidth }}px;">
+                                            <div id="roadmap-canvas" class="gchart-canvas" style="width: {{ .TimelineWidth }}px;">
                                                 <div id="roadmap-current-marker" class="gcurrent-marker" aria-hidden="true"></div>
                                                 <table class="gcharttableh" style="width: {{ .TimelineWidth }}px;">
                                                     <tbody>
@@ -476,9 +585,11 @@
                 var projectFilter = document.getElementById('roadmap-project-filter');
                 var filterForm = document.getElementById('roadmap-filter-form');
                 var roadmapScroll = document.getElementById('roadmap-scroll');
-                var roadmapCanvas = document.querySelector('.gchart-canvas');
+                var roadmapCanvas = document.getElementById('roadmap-canvas');
                 var firstTimelineBar = document.querySelector('[data-roadmap-bar]');
                 var currentMarker = document.getElementById('roadmap-current-marker');
+                var projectRoadmapCanvas = document.getElementById('project-roadmap-canvas');
+                var projectCurrentMarker = document.getElementById('project-roadmap-current-marker');
                 var epicProjectSelect = document.querySelector('[data-epic-create-project]');
                 var ticketProjectSelect = document.querySelector('[data-ticket-create-project]');
                 var ticketEpicSelect = document.querySelector('[data-ticket-create-epic]');
@@ -519,11 +630,9 @@
                     roadmapScroll.scrollLeft = Math.max(0, firstBarLeft - columnWidth);
                 }
 
-                function placeCurrentMarker() {
-                    if (!roadmapCanvas || !currentMarker) return;
-                    var markerLeft = {{ .CurrentMarkerLeft }};
-                    var markerWidth = {{ .CurrentMarkerWidth }};
-                    var canvasWidth = roadmapCanvas.offsetWidth;
+                function placeCurrentMarker(canvasEl, markerEl, markerLeft, markerWidth) {
+                    if (!canvasEl || !markerEl) return;
+                    var canvasWidth = canvasEl.offsetWidth;
 
                     if (canvasWidth <= 0) return;
 
@@ -531,8 +640,8 @@
                     if (lineX < 0) lineX = 0;
                     if (lineX > canvasWidth) lineX = canvasWidth;
 
-                    currentMarker.style.left = lineX + 'px';
-                    currentMarker.classList.add('is-visible');
+                    markerEl.style.left = lineX + 'px';
+                    markerEl.classList.add('is-visible');
                 }
 
                 function syncModalProjectFromFilter(selectEl) {
@@ -599,8 +708,11 @@
                         closeModal(trigger.closest('[data-modal]'));
                     });
                 });
-                window.requestAnimationFrame(alignRoadmapScrollToData);
-                window.requestAnimationFrame(placeCurrentMarker);
+                window.requestAnimationFrame(function () {
+                    alignRoadmapScrollToData();
+                    placeCurrentMarker(roadmapCanvas, currentMarker, {{ .CurrentMarkerLeft }}, {{ .CurrentMarkerWidth }});
+                    placeCurrentMarker(projectRoadmapCanvas, projectCurrentMarker, {{ .ProjectPeriodCurrentMarkerLeft }}, {{ .ProjectPeriodCurrentMarkerWidth }});
+                });
                 syncTicketEpicOptions();
                 {{ if .OpenModal }}openModal('{{ .OpenModal }}');{{ end }}
             });

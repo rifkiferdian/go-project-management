@@ -448,6 +448,16 @@ func RoadMapTicketStore(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, "/road-map?format="+normalizeRoadmapFormat(c.DefaultPostForm("format", "week")))
 }
 
+type roadmapProjectPeriodViewRow struct {
+	ProjectName    string
+	StartDateLabel string
+	EndDateLabel   string
+	DurationLabel  string
+	ShowBar        bool
+	BarLeftPx      int
+	BarWidthPx     int
+}
+
 func renderRoadMapPage(c *gin.Context, message, openModal string, epicOld interface{}, ticketOld interface{}) {
 	svc := managementService()
 	format := normalizeRoadmapFormat(c.DefaultQuery("format", "week"))
@@ -470,9 +480,15 @@ func renderRoadMapPage(c *gin.Context, message, openModal string, epicOld interf
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+	projectPeriods, err := svc.GetRoadmapProjectPeriods()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	totalProjects := len(projectOptions)
 	filteredEpics, filteredTickets := filterRoadmapByProject(epics, tickets, selectedProjectID)
+	projectPeriodWeeks, projectPeriodYearGroups, projectPeriodRows, projectPeriodTimelineWidth, projectPeriodColumnWidth, projectPeriodCurrentMarkerLeft, projectPeriodCurrentMarkerWidth, projectPeriodRangeLabel := buildRoadmapProjectPeriodTimeline(projectPeriods, roadmapNow(), format)
 	weeks, rows, timelineWidth, currentMarkerLeft, currentMarkerWidth, columnWidth := svc.BuildRoadmapTimeline(filteredEpics, filteredTickets, roadmapNow(), format)
 	yearGroups := buildRoadmapYearGroups(weeks, columnWidth)
 	projectLabel := resolveRoadmapProjectLabel(projectOptions, selectedProjectID)
@@ -506,6 +522,14 @@ func renderRoadMapPage(c *gin.Context, message, openModal string, epicOld interf
 		"TotalProjects":      totalProjects,
 		"ProjectLabel":       projectLabel,
 		"SelectedProjectID":  selectedProjectID,
+		"ProjectPeriodWeeks": projectPeriodWeeks,
+		"ProjectPeriodYearGroups": projectPeriodYearGroups,
+		"ProjectPeriodRows":  projectPeriodRows,
+		"ProjectPeriodTimelineWidth": projectPeriodTimelineWidth,
+		"ProjectPeriodColumnWidth": projectPeriodColumnWidth,
+		"ProjectPeriodCurrentMarkerLeft": projectPeriodCurrentMarkerLeft,
+		"ProjectPeriodCurrentMarkerWidth": projectPeriodCurrentMarkerWidth,
+		"ProjectPeriodRange": projectPeriodRangeLabel,
 		"RoadmapError":       message,
 		"OpenModal":          openModal,
 		"EpicOld":            epicOld,
@@ -545,6 +569,192 @@ func filterRoadmapByProject(epics []models.RoadmapEpic, tickets []models.Roadmap
 	}
 
 	return filteredEpics, filteredTickets
+}
+
+func buildRoadmapProjectPeriodTimeline(periods []models.RoadmapProjectPeriod, now time.Time, format string) ([]models.RoadmapWeek, []models.RoadmapYearGroup, []roadmapProjectPeriodViewRow, int, int, int, int, string) {
+	location := now.Location()
+	if location == nil {
+		location = time.UTC
+	}
+
+	type parsedPeriod struct {
+		models.RoadmapProjectPeriod
+		start time.Time
+		end   time.Time
+	}
+
+	parsed := make([]parsedPeriod, 0, len(periods))
+	var minStart, maxEnd time.Time
+
+	for _, period := range periods {
+		start, errStart := time.ParseInLocation("2006-01-02", strings.TrimSpace(period.StartsAtISO), location)
+		end, errEnd := time.ParseInLocation("2006-01-02", strings.TrimSpace(period.EndsAtISO), location)
+		if errStart != nil || errEnd != nil || end.Before(start) {
+			continue
+		}
+
+		parsed = append(parsed, parsedPeriod{
+			RoadmapProjectPeriod: period,
+			start:                start,
+			end:                  end,
+		})
+		if minStart.IsZero() || start.Before(minStart) {
+			minStart = start
+		}
+		if maxEnd.IsZero() || end.After(maxEnd) {
+			maxEnd = end
+		}
+	}
+
+	if minStart.IsZero() || maxEnd.IsZero() {
+		start := roadmapProjectStartOfWeek(now)
+		minStart = start
+		maxEnd = start.AddDate(0, 0, 83)
+	}
+
+	baseStart := minStart.AddDate(0, 0, -7)
+	baseEnd := maxEnd.AddDate(0, 0, 28)
+	var rangeStart, rangeEnd time.Time
+	switch format {
+	case "day":
+		rangeStart = roadmapProjectStartOfDay(baseStart)
+		rangeEnd = roadmapProjectStartOfDay(baseEnd)
+	case "month":
+		rangeStart = roadmapProjectFirstOfMonth(baseStart)
+		rangeEnd = roadmapProjectEndOfMonth(baseEnd)
+	default:
+		rangeStart = roadmapProjectStartOfWeek(baseStart)
+		rangeEnd = roadmapProjectEndOfWeek(baseEnd)
+	}
+
+	columns, columnWidth := buildRoadmapProjectColumns(rangeStart, rangeEnd, format)
+	timelineWidth := len(columns) * columnWidth
+	yearGroups := buildRoadmapYearGroups(columns, columnWidth)
+
+	rows := make([]roadmapProjectPeriodViewRow, 0, len(parsed))
+	for _, item := range parsed {
+		barLeftPx, barWidthPx := roadmapProjectBarMetrics(item.start, item.end, rangeStart, format, columnWidth)
+		durationDays := roadmapProjectDaysBetween(item.start, item.end) + 1
+		if durationDays < 1 {
+			durationDays = 1
+		}
+
+		rows = append(rows, roadmapProjectPeriodViewRow{
+			ProjectName:    item.ProjectName,
+			StartDateLabel: item.StartsAt,
+			EndDateLabel:   item.EndsAt,
+			DurationLabel:  fmt.Sprintf("%d hari", durationDays),
+			ShowBar:        barWidthPx > 0,
+			BarLeftPx:      barLeftPx,
+			BarWidthPx:     barWidthPx,
+		})
+	}
+
+	rangeLabel := fmt.Sprintf("%s - %s", minStart.Format("02 Jan 2006"), maxEnd.Format("02 Jan 2006"))
+	currentMarkerLeft, currentMarkerWidth := roadmapProjectCurrentMarkerMetrics(now, rangeStart, format, columnWidth)
+	return columns, yearGroups, rows, timelineWidth, columnWidth, currentMarkerLeft, currentMarkerWidth, rangeLabel
+}
+
+func buildRoadmapProjectColumns(start, end time.Time, format string) ([]models.RoadmapWeek, int) {
+	switch format {
+	case "day":
+		var columns []models.RoadmapWeek
+		for cursor := start; !cursor.After(end); cursor = cursor.AddDate(0, 0, 1) {
+			columns = append(columns, models.RoadmapWeek{
+				YearLabel: cursor.Format("2006"),
+				DateLabel: cursor.Format("02 Jan 06"),
+			})
+		}
+		return columns, 78
+	case "month":
+		var columns []models.RoadmapWeek
+		for cursor := roadmapProjectFirstOfMonth(start); !cursor.After(end); cursor = cursor.AddDate(0, 1, 0) {
+			columns = append(columns, models.RoadmapWeek{
+				YearLabel: cursor.Format("2006"),
+				DateLabel: cursor.Format("Jan 06"),
+			})
+		}
+		return columns, 102
+	default:
+		var columns []models.RoadmapWeek
+		for cursor := start; !cursor.After(end); cursor = cursor.AddDate(0, 0, 7) {
+			columns = append(columns, models.RoadmapWeek{
+				YearLabel: cursor.Format("2006"),
+				DateLabel: cursor.Format("02 Jan 06"),
+			})
+		}
+		return columns, 72
+	}
+}
+
+func roadmapProjectBarMetrics(start, end, rangeStart time.Time, format string, columnWidth int) (int, int) {
+	switch format {
+	case "day":
+		offset := roadmapProjectDaysBetween(rangeStart, roadmapProjectStartOfDay(start))
+		span := roadmapProjectDaysBetween(roadmapProjectStartOfDay(start), roadmapProjectStartOfDay(end)) + 1
+		return offset * columnWidth, roadmapProjectMax(span, 1) * columnWidth
+	case "month":
+		offset := roadmapProjectMonthsBetween(roadmapProjectFirstOfMonth(rangeStart), roadmapProjectFirstOfMonth(start))
+		span := roadmapProjectMonthsBetween(roadmapProjectFirstOfMonth(start), roadmapProjectFirstOfMonth(end)) + 1
+		return offset * columnWidth, roadmapProjectMax(span, 1) * columnWidth
+	default:
+		offset := roadmapProjectDaysBetween(roadmapProjectStartOfWeek(rangeStart), roadmapProjectStartOfWeek(start)) / 7
+		span := (roadmapProjectDaysBetween(roadmapProjectStartOfWeek(start), roadmapProjectStartOfWeek(end)) / 7) + 1
+		return offset * columnWidth, roadmapProjectMax(span, 1) * columnWidth
+	}
+}
+
+func roadmapProjectCurrentMarkerMetrics(now, rangeStart time.Time, format string, columnWidth int) (int, int) {
+	switch format {
+	case "day":
+		return roadmapProjectDaysBetween(rangeStart, roadmapProjectStartOfDay(now)) * columnWidth, columnWidth
+	case "month":
+		return roadmapProjectMonthsBetween(roadmapProjectFirstOfMonth(rangeStart), roadmapProjectFirstOfMonth(now)) * columnWidth, columnWidth
+	default:
+		return (roadmapProjectDaysBetween(roadmapProjectStartOfWeek(rangeStart), roadmapProjectStartOfWeek(now)) / 7) * columnWidth, columnWidth
+	}
+}
+
+func roadmapProjectStartOfWeek(value time.Time) time.Time {
+	normalized := time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, value.Location())
+	weekday := int(normalized.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	return normalized.AddDate(0, 0, -(weekday - 1))
+}
+
+func roadmapProjectEndOfWeek(value time.Time) time.Time {
+	return roadmapProjectStartOfWeek(value).AddDate(0, 0, 6)
+}
+
+func roadmapProjectStartOfDay(value time.Time) time.Time {
+	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, value.Location())
+}
+
+func roadmapProjectFirstOfMonth(value time.Time) time.Time {
+	return time.Date(value.Year(), value.Month(), 1, 0, 0, 0, 0, value.Location())
+}
+
+func roadmapProjectEndOfMonth(value time.Time) time.Time {
+	return roadmapProjectFirstOfMonth(value).AddDate(0, 1, -1)
+}
+
+func roadmapProjectDaysBetween(start, end time.Time) int {
+	startDate := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, time.UTC)
+	return int(endDate.Sub(startDate).Hours() / 24)
+}
+
+func roadmapProjectMonthsBetween(start, end time.Time) int {
+	return (end.Year()-start.Year())*12 + int(end.Month()-start.Month())
+}
+
+func roadmapProjectMax(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func resolveRoadmapProjectLabel(options []models.ProjectOption, selectedProjectID int) string {

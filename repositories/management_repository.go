@@ -1264,6 +1264,44 @@ func (r *ManagementRepository) GetRoadmapProjectOptions() ([]models.ProjectOptio
 	return items, rows.Err()
 }
 
+func (r *ManagementRepository) GetRoadmapProjectPeriods() ([]models.RoadmapProjectPeriod, error) {
+	rows, err := r.DB.Query(`
+		SELECT
+			p.id,
+			p.name,
+			p.start_date,
+			p.end_date
+		FROM projects p
+		WHERE p.deleted_at IS NULL
+			AND p.start_date IS NOT NULL
+			AND p.end_date IS NOT NULL
+		ORDER BY p.start_date ASC, p.name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.RoadmapProjectPeriod
+	for rows.Next() {
+		var (
+			item        models.RoadmapProjectPeriod
+			startsAtRaw sql.NullTime
+			endsAtRaw   sql.NullTime
+		)
+		if err := rows.Scan(&item.ProjectID, &item.ProjectName, &startsAtRaw, &endsAtRaw); err != nil {
+			return nil, err
+		}
+		item.StartsAtISO = optionalDateISO(startsAtRaw)
+		item.EndsAtISO = optionalDateISO(endsAtRaw)
+		item.StartsAt = formatOptionalDate(startsAtRaw)
+		item.EndsAt = formatOptionalDate(endsAtRaw)
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
 func (r *ManagementRepository) GetRoadmapEpicOptions() ([]models.RoadmapEpicOption, error) {
 	rows, err := r.DB.Query(`
 		SELECT e.id, e.name, e.project_id, p.name
