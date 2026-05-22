@@ -16,8 +16,22 @@ func (s *ApprovalFlowStepApproverService) GetApprovers() ([]models.ApprovalFlowS
 	return s.Repo.GetAll()
 }
 
+func (s *ApprovalFlowStepApproverService) GetApproversByFlowID(flowID int) ([]models.ApprovalFlowStepApprover, error) {
+	if flowID <= 0 {
+		return s.Repo.GetAll()
+	}
+	return s.Repo.GetAllByFlowID(flowID)
+}
+
 func (s *ApprovalFlowStepApproverService) GetStepOptions() ([]models.ApprovalFlowStepOption, error) {
 	return s.Repo.GetStepOptions()
+}
+
+func (s *ApprovalFlowStepApproverService) GetStepOptionsByFlowID(flowID int) ([]models.ApprovalFlowStepOption, error) {
+	if flowID <= 0 {
+		return s.Repo.GetStepOptions()
+	}
+	return s.Repo.GetStepOptionsByFlowID(flowID)
 }
 
 func (s *ApprovalFlowStepApproverService) GetUserOptions() ([]models.LookupOption, error) {

@@ -32,6 +32,21 @@
                             </div>
                             <div class="p-4">
                                 {{ if .Error }}<div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{{ .Error }}</div>{{ end }}
+                                <form method="get" action="/approval-flow-steps" class="mb-3 inline-flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50/60 p-2">
+                                    <div class="w-[220px] max-w-full">
+                                        <label class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Approval Flows</label>
+                                        <select name="approval_flow_id" class="mt-1.5 h-9 w-[220px] max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2.5 text-xs outline-none focus:border-brand-500">
+                                            <option value="0">All Flows</option>
+                                            {{ range .FlowOptions }}
+                                            <option value="{{ .ID }}" {{ if eq .ID $.SelectedFlowID }}selected{{ end }}>{{ .FlowName }} ({{ .FlowCode }})</option>
+                                            {{ end }}
+                                        </select>
+                                    </div>
+                                    <div class="inline-flex items-center gap-2">
+                                        <button type="submit" class="inline-flex h-9 items-center justify-center rounded-lg bg-[#f26419] px-3 text-xs font-semibold text-white transition hover:bg-[#dc5a15]">Filter</button>
+                                        <a href="/approval-flow-steps" class="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">Reset</a>
+                                    </div>
+                                </form>
                                 <div class="overflow-x-auto">
                                     <table class="w-full min-w-[920px] text-sm">
                                         <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
@@ -81,7 +96,7 @@
                                                         >
                                                             <i class="bx bx-pen text-sm"></i>Edit
                                                         </button>
-                                                        <button type="button" class="btn-delete inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100" data-url="/approval-flow-steps/delete/{{ $row.ID }}" data-name="{{ $row.StepName }}">
+                                                        <button type="button" class="btn-delete inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100" data-url="/approval-flow-steps/delete/{{ $row.ID }}{{ if gt $.SelectedFlowID 0 }}?approval_flow_id={{ $.SelectedFlowID }}{{ end }}" data-name="{{ $row.StepName }}">
                                                             <i class="bx bx-trash text-sm"></i>Del
                                                         </button>
                                                     </div>
@@ -107,6 +122,7 @@
             <div class="relative w-full max-w-xl rounded-2xl bg-white p-4 shadow-xl sm:p-6">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-4"><h2 class="text-lg font-semibold">New Flow Step</h2><button type="button" data-modal-close class="text-slate-400 hover:text-slate-600"><i class="bx bx-x text-2xl"></i></button></div>
                 <form action="/approval-flow-steps" method="post" class="mt-6 space-y-4">
+                    <input type="hidden" name="filter_approval_flow_id" value="{{ .SelectedFlowID }}">
                     <div>
                         <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Flow</label>
                         <select name="approval_flow_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500">
@@ -146,6 +162,7 @@
                 <div class="flex items-center justify-between border-b border-slate-100 pb-4"><h2 class="text-lg font-semibold">Edit Flow Step</h2><button type="button" data-modal-close class="text-slate-400 hover:text-slate-600"><i class="bx bx-x text-2xl"></i></button></div>
                 <form action="/approval-flow-steps/update" method="post" class="mt-6 space-y-4">
                     <input type="hidden" name="id" id="edit_id">
+                    <input type="hidden" name="filter_approval_flow_id" value="{{ .SelectedFlowID }}">
                     <div>
                         <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Flow</label>
                         <select id="edit_flow_id" name="approval_flow_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500">

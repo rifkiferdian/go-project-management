@@ -44,7 +44,11 @@ func (r *ApprovalFlowStepRepository) ExistsFlowByID(flowID int) (bool, error) {
 }
 
 func (r *ApprovalFlowStepRepository) GetAll() ([]models.ApprovalFlowStep, error) {
-	rows, err := r.DB.Query(`
+	return r.GetAllByFlowID(0)
+}
+
+func (r *ApprovalFlowStepRepository) GetAllByFlowID(flowID int) ([]models.ApprovalFlowStep, error) {
+	query := `
 		SELECT
 			s.id,
 			s.approval_flow_id,
@@ -58,8 +62,15 @@ func (r *ApprovalFlowStepRepository) GetAll() ([]models.ApprovalFlowStep, error)
 			s.updated_at
 		FROM approval_flow_steps s
 		JOIN approval_flows f ON f.id = s.approval_flow_id
-		ORDER BY f.flow_name ASC, s.step_order ASC
-	`)
+	`
+	args := make([]interface{}, 0, 1)
+	if flowID > 0 {
+		query += " WHERE s.approval_flow_id = ?"
+		args = append(args, flowID)
+	}
+	query += " ORDER BY f.flow_name ASC, s.step_order ASC"
+
+	rows, err := r.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

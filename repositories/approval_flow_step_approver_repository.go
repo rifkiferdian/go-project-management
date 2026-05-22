@@ -12,7 +12,11 @@ type ApprovalFlowStepApproverRepository struct {
 }
 
 func (r *ApprovalFlowStepApproverRepository) GetStepOptions() ([]models.ApprovalFlowStepOption, error) {
-	rows, err := r.DB.Query(`
+	return r.GetStepOptionsByFlowID(0)
+}
+
+func (r *ApprovalFlowStepApproverRepository) GetStepOptionsByFlowID(flowID int) ([]models.ApprovalFlowStepOption, error) {
+	query := `
 		SELECT
 			s.id,
 			s.approval_flow_id,
@@ -23,8 +27,15 @@ func (r *ApprovalFlowStepApproverRepository) GetStepOptions() ([]models.Approval
 			s.is_active
 		FROM approval_flow_steps s
 		JOIN approval_flows f ON f.id = s.approval_flow_id
-		ORDER BY f.flow_name ASC, s.step_order ASC
-	`)
+	`
+	args := make([]interface{}, 0, 1)
+	if flowID > 0 {
+		query += " WHERE s.approval_flow_id = ?"
+		args = append(args, flowID)
+	}
+	query += " ORDER BY f.flow_name ASC, s.step_order ASC"
+
+	rows, err := r.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +72,11 @@ func (r *ApprovalFlowStepApproverRepository) ExistsStepByID(stepID int) (bool, e
 }
 
 func (r *ApprovalFlowStepApproverRepository) GetAll() ([]models.ApprovalFlowStepApprover, error) {
-	rows, err := r.DB.Query(`
+	return r.GetAllByFlowID(0)
+}
+
+func (r *ApprovalFlowStepApproverRepository) GetAllByFlowID(flowID int) ([]models.ApprovalFlowStepApprover, error) {
+	query := `
 		SELECT
 			a.id,
 			a.approval_flow_step_id,
@@ -88,8 +103,15 @@ func (r *ApprovalFlowStepApproverRepository) GetAll() ([]models.ApprovalFlowStep
 		LEFT JOIN users u ON u.id = a.approver_user_id AND u.deleted_at IS NULL
 		LEFT JOIN roles r ON r.id = a.approver_role_id
 		LEFT JOIN divisions d ON d.id = a.approver_division_id AND d.deleted_at IS NULL
-		ORDER BY f.flow_name ASC, s.step_order ASC, a.id ASC
-	`)
+	`
+	args := make([]interface{}, 0, 1)
+	if flowID > 0 {
+		query += " WHERE s.approval_flow_id = ?"
+		args = append(args, flowID)
+	}
+	query += " ORDER BY f.flow_name ASC, s.step_order ASC, a.id ASC"
+
+	rows, err := r.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

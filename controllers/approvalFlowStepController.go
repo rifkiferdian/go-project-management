@@ -14,7 +14,9 @@ import (
 
 func ApprovalFlowStepIndex(c *gin.Context) {
 	stepSvc := approvalFlowStepService()
-	rows, err := stepSvc.GetApprovalFlowSteps()
+	selectedFlowID := parsePositiveInt(c.Query("approval_flow_id"))
+
+	rows, err := stepSvc.GetApprovalFlowStepsByFlowID(selectedFlowID)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -27,30 +29,33 @@ func ApprovalFlowStepIndex(c *gin.Context) {
 	}
 
 	Render(c, "approval_flow_steps.html", gin.H{
-		"Title":       "Approval flow steps",
-		"Page":        "approvalFlowStep",
-		"Rows":        rows,
-		"FlowOptions": flows,
+		"Title":          "Approval flow steps",
+		"Page":           "approvalFlowStep",
+		"Rows":           rows,
+		"FlowOptions":    flows,
+		"SelectedFlowID": selectedFlowID,
 	})
 }
 
 func ApprovalFlowStepStore(c *gin.Context) {
+	selectedFlowID := parsePositiveInt(c.PostForm("filter_approval_flow_id"))
 	flowID, _ := strconv.Atoi(c.PostForm("approval_flow_id"))
 	stepOrder, _ := strconv.Atoi(c.PostForm("step_order"))
 
 	stepSvc := approvalFlowStepService()
 	if err := stepSvc.CreateApprovalFlowStep(flowID, stepOrder, c.PostForm("step_name"), c.PostForm("approval_rule"), checkboxOn(c, "is_active")); err != nil {
-		renderApprovalFlowStepsWithError(c, err.Error())
+		renderApprovalFlowStepsWithError(c, err.Error(), selectedFlowID)
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/approval-flow-steps")
+	c.Redirect(http.StatusSeeOther, approvalFlowStepsRedirectURL(selectedFlowID))
 }
 
 func ApprovalFlowStepUpdate(c *gin.Context) {
+	selectedFlowID := parsePositiveInt(c.PostForm("filter_approval_flow_id"))
 	id, err := strconv.Atoi(c.PostForm("id"))
 	if err != nil {
-		renderApprovalFlowStepsWithError(c, "approval flow step tidak valid")
+		renderApprovalFlowStepsWithError(c, "approval flow step tidak valid", selectedFlowID)
 		return
 	}
 
@@ -59,14 +64,15 @@ func ApprovalFlowStepUpdate(c *gin.Context) {
 
 	stepSvc := approvalFlowStepService()
 	if err := stepSvc.UpdateApprovalFlowStep(id, flowID, stepOrder, c.PostForm("step_name"), c.PostForm("approval_rule"), checkboxOn(c, "is_active")); err != nil {
-		renderApprovalFlowStepsWithError(c, err.Error())
+		renderApprovalFlowStepsWithError(c, err.Error(), selectedFlowID)
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/approval-flow-steps")
+	c.Redirect(http.StatusSeeOther, approvalFlowStepsRedirectURL(selectedFlowID))
 }
 
 func ApprovalFlowStepDelete(c *gin.Context) {
+	selectedFlowID := parsePositiveInt(c.Query("approval_flow_id"))
 	id, err := strconv.Atoi(strings.TrimSpace(c.Param("id")))
 	if err != nil {
 		c.String(http.StatusBadRequest, "invalid approval flow step id")
@@ -79,7 +85,7 @@ func ApprovalFlowStepDelete(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/approval-flow-steps")
+	c.Redirect(http.StatusSeeOther, approvalFlowStepsRedirectURL(selectedFlowID))
 }
 
 func approvalFlowStepService() *services.ApprovalFlowStepService {
@@ -88,9 +94,9 @@ func approvalFlowStepService() *services.ApprovalFlowStepService {
 	}
 }
 
-func renderApprovalFlowStepsWithError(c *gin.Context, message string) {
+func renderApprovalFlowStepsWithError(c *gin.Context, message string, selectedFlowID int) {
 	stepSvc := approvalFlowStepService()
-	rows, err := stepSvc.GetApprovalFlowSteps()
+	rows, err := stepSvc.GetApprovalFlowStepsByFlowID(selectedFlowID)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -103,10 +109,26 @@ func renderApprovalFlowStepsWithError(c *gin.Context, message string) {
 	}
 
 	Render(c, "approval_flow_steps.html", gin.H{
-		"Title":       "Approval flow steps",
-		"Page":        "approvalFlowStep",
-		"Rows":        rows,
-		"FlowOptions": flows,
-		"Error":       message,
+		"Title":          "Approval flow steps",
+		"Page":           "approvalFlowStep",
+		"Rows":           rows,
+		"FlowOptions":    flows,
+		"SelectedFlowID": selectedFlowID,
+		"Error":          message,
 	})
+}
+
+func approvalFlowStepsRedirectURL(selectedFlowID int) string {
+	if selectedFlowID > 0 {
+		return "/approval-flow-steps?approval_flow_id=" + strconv.Itoa(selectedFlowID)
+	}
+	return "/approval-flow-steps"
+}
+
+func parsePositiveInt(value string) int {
+	number, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil || number <= 0 {
+		return 0
+	}
+	return number
 }
