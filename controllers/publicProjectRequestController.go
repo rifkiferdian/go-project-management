@@ -526,6 +526,11 @@ func storePublicProjectRequest(c *gin.Context, form map[string]string, requestDi
 		return err
 	}
 
+	if err := enqueueProjectRequestStepNotifications(tx, requestID, 1); err != nil {
+		_ = removeProjectRequestSupportingDocument(publicPath)
+		return err
+	}
+
 	return tx.Commit()
 }
 

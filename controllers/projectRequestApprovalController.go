@@ -118,15 +118,15 @@ func ProjectRequestManageIndex(c *gin.Context) {
 	}
 
 	Render(c, "project_requests_manage.html", gin.H{
-		"Title":   "Project Requests",
-		"Page":    "projectRequestManage",
-		"Rows":    rows,
-		"IsAdmin": currentUserHasRole(c, "admin"),
-		"Keyword": keyword,
+		"Title":           "Project Requests",
+		"Page":            "projectRequestManage",
+		"Rows":            rows,
+		"IsAdmin":         currentUserHasRole(c, "admin"),
+		"Keyword":         keyword,
 		"DivisionOptions": divisionOptions,
 		"DivisionID":      divisionID,
-		"Error":   strings.TrimSpace(c.Query("error")),
-		"Success": strings.TrimSpace(c.Query("success")),
+		"Error":           strings.TrimSpace(c.Query("error")),
+		"Success":         strings.TrimSpace(c.Query("success")),
 	})
 }
 
@@ -918,6 +918,9 @@ func applyProjectRequestDecision(requestID int64, userID int, decision, note str
 			WHERE id = ?
 				AND status = 'pending'
 		`, nextStepOrder, requestID); err != nil {
+			return err
+		}
+		if err := enqueueProjectRequestStepNotifications(tx, requestID, nextStepOrder); err != nil {
 			return err
 		}
 		return tx.Commit()

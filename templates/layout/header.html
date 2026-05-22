@@ -17,33 +17,26 @@
         <div class="flex items-center gap-2 sm:gap-4 lg:mr-10">
             
 
-            <details class="relative">
+            <details class="relative" data-notification-menu>
                 <summary class="list-none cursor-pointer">
                     <div class="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100">
                         <i class="bx bx-bell text-xl"></i>
-                        <span class="absolute right-1 top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold leading-4 text-white ring-2 ring-white">3</span>
+                        <span id="notif-badge" class="absolute right-1 top-1 hidden min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold leading-4 text-white ring-2 ring-white">0</span>
                     </div>
                 </summary>
                 <div class="absolute right-0 mt-3 w-[min(92vw,19rem)] rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-lg">
-                    <div class="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Notifications</div>
-                    <a class="flex items-start gap-3 rounded-xl px-3 py-2 transition hover:bg-slate-50" href="#">
-                        <span class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
-                            <i class="bx bx-file text-lg"></i>
-                        </span>
-                        <span class="text-slate-700">Dummy data Notif.</span>
-                    </a>
-                    <a class="flex items-start gap-3 rounded-xl px-3 py-2 transition hover:bg-slate-50" href="#">
-                        <span class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
-                            <i class="bx bx-check-shield text-lg"></i>
-                        </span>
-                        <span class="text-slate-700">Dummy data Notif.</span>
-                    </a>
-                    <a class="flex items-start gap-3 rounded-xl px-3 py-2 transition hover:bg-slate-50" href="#">
-                        <span class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                            <i class="bx bx-cloud-upload text-lg"></i>
-                        </span>
-                        <span class="text-slate-700">Dummy data Notif.</span>
-                    </a>
+                    <div class="flex items-center justify-between px-2 pb-2">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Notifications</div>
+                        <div class="flex items-center gap-2">
+                            <button id="notif-mark-all" type="button" class="text-[11px] font-semibold text-orange-600 transition hover:text-orange-700">Tandai Semua Dibaca</button>
+                        </div>
+                    </div>
+                    <div id="notif-list" class="max-h-[360px] space-y-1 overflow-y-auto">
+                        <div class="rounded-xl px-3 py-3 text-xs text-slate-500">Loading notifications...</div>
+                    </div>
+                    <div class="mt-2 border-t border-slate-100 pt-2">
+                        <a href="/notifications/all" class="block rounded-lg px-3 py-2 text-center text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-800">Lihat Semua Notifikasi</a>
+                    </div>
                 </div>
             </details>
             <span class="hidden h-8 w-px bg-slate-200 sm:inline-flex"></span>
@@ -73,4 +66,163 @@
         </div>
     </div>
 </header>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var badgeEl = document.getElementById('notif-badge');
+        var listEl = document.getElementById('notif-list');
+        var markAllBtn = document.getElementById('notif-mark-all');
+        var menuEl = document.querySelector('[data-notification-menu]');
+        if (!badgeEl || !listEl || !menuEl) return;
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function setUnreadCount(count) {
+            var total = Number(count || 0);
+            if (total < 0) total = 0;
+
+            if (total > 0) {
+                badgeEl.textContent = total > 99 ? '99+' : String(total);
+                badgeEl.classList.remove('hidden');
+                badgeEl.classList.add('inline-flex');
+            } else {
+                badgeEl.textContent = '0';
+                badgeEl.classList.add('hidden');
+                badgeEl.classList.remove('inline-flex');
+            }
+
+            if (markAllBtn) {
+                markAllBtn.disabled = total === 0;
+                markAllBtn.classList.toggle('opacity-50', total === 0);
+                markAllBtn.classList.toggle('cursor-not-allowed', total === 0);
+            }
+        }
+
+        function severityStyles(severity) {
+            if (severity === 'danger') return { icon: 'bx bx-error-circle', color: 'bg-rose-50 text-rose-600' };
+            if (severity === 'warning') return { icon: 'bx bx-error', color: 'bg-amber-50 text-amber-600' };
+            if (severity === 'success') return { icon: 'bx bx-check-circle', color: 'bg-emerald-50 text-emerald-600' };
+            return { icon: 'bx bx-bell', color: 'bg-sky-50 text-sky-600' };
+        }
+
+        function renderNotifications(rows) {
+            if (!Array.isArray(rows) || rows.length === 0) {
+                listEl.innerHTML = '<div class="rounded-xl px-3 py-3 text-xs text-slate-500">Belum ada notifikasi.</div>';
+                return;
+            }
+
+            listEl.innerHTML = rows.map(function (row) {
+                var styles = severityStyles((row.severity || '').toLowerCase());
+                var unreadDot = row.is_read ? '' : '<span class="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-rose-500"></span>';
+                var actionUrl = escapeHtml(row.action_url || '');
+                var wrapperTagOpen = actionUrl ? '<a href="' + actionUrl + '"' : '<button type="button"';
+                var wrapperTagClose = actionUrl ? '</a>' : '</button>';
+
+                return '' +
+                    wrapperTagOpen + ' class="notif-item flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-slate-50" data-id="' + Number(row.id || 0) + '" data-read="' + (row.is_read ? '1' : '0') + '">' +
+                    '<span class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ' + styles.color + '">' +
+                    '<i class="' + styles.icon + ' text-lg"></i>' +
+                    '</span>' +
+                    '<span class="min-w-0 flex-1">' +
+                    '<span class="line-clamp-1 text-sm font-semibold text-slate-700">' + escapeHtml(row.title || '-') + '</span>' +
+                    '<span class="mt-0.5 block line-clamp-2 text-xs text-slate-500">' + escapeHtml(row.message || '') + '</span>' +
+                    '<span class="mt-1 block text-[11px] text-slate-400">' + escapeHtml(row.created_at_display || '') + '</span>' +
+                    '</span>' +
+                    unreadDot +
+                    wrapperTagClose;
+            }).join('');
+        }
+
+        async function loadNotifications() {
+            try {
+                var response = await fetch('/notifications?limit=3', { headers: { 'Accept': 'application/json' } });
+                if (!response.ok) return;
+                var payload = await response.json();
+                renderNotifications(payload.rows || []);
+                setUnreadCount(payload.unread_count || 0);
+            } catch (err) {
+            }
+        }
+
+        async function markRead(notificationID) {
+            if (!notificationID || notificationID <= 0) return;
+            try {
+                var response = await fetch('/notifications/' + notificationID + '/read', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) return;
+                var payload = await response.json();
+                setUnreadCount(payload.unread_count || 0);
+            } catch (err) {
+            }
+        }
+
+        if (listEl) {
+            listEl.addEventListener('click', function (event) {
+                var target = event.target;
+                if (!target) return;
+                var item = target.closest('.notif-item');
+                if (!item) return;
+                if ((item.getAttribute('data-read') || '0') === '1') return;
+
+                var notificationID = parseInt(item.getAttribute('data-id') || '0', 10);
+                if (!isNaN(notificationID) && notificationID > 0) {
+                    markRead(notificationID);
+                    item.setAttribute('data-read', '1');
+                }
+            });
+        }
+
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', async function (event) {
+                event.preventDefault();
+                if (markAllBtn.disabled) return;
+
+                try {
+                    var response = await fetch('/notifications/read-all', {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!response.ok) return;
+                    var payload = await response.json();
+                    setUnreadCount(payload.unread_count || 0);
+                    loadNotifications();
+                } catch (err) {
+                }
+            });
+        }
+
+        menuEl.addEventListener('toggle', function () {
+            if (menuEl.open) loadNotifications();
+        });
+
+        loadNotifications();
+
+        try {
+            var source = new EventSource('/notifications/stream');
+            source.addEventListener('notification', function (event) {
+                try {
+                    var payload = JSON.parse(event.data || '{}');
+                    if (typeof payload.unread_count === 'number') {
+                        setUnreadCount(payload.unread_count);
+                    }
+                } catch (err) {
+                }
+                loadNotifications();
+            });
+
+            window.addEventListener('beforeunload', function () {
+                source.close();
+            });
+        } catch (err) {
+        }
+    });
+</script>
 {{ end }}
