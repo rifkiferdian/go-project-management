@@ -140,6 +140,12 @@
                     Referential
                 </div>
                 <ul class="mt-1 space-y-1 pl-2">
+                    <li>
+                        <a href="{{ baseURL "/ticket-templates" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "ticketTemplate" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "ticketTemplate" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
+                            <i class="bx bx-clipboard text-lg"></i>
+                            <span>Ticket Templates</span>
+                        </a>
+                    </li>
                     {{ if index .Permissions "List activities" }}
                     <li>
                         <a href="{{ baseURL "/activities" }}" class="flex items-center gap-3 rounded-2xl px-3 py-3 text-[14px] font-medium transition sm:px-4 {{ if eq .Page "activity" }}text-white shadow-card ring-1{{ else }}text-slate-600 hover:bg-brand-50 hover:text-[#f26419]{{ end }}" {{ if eq .Page "activity" }}style="background: linear-gradient(135deg, #fb923c 0%, #f26419 100%); --tw-ring-color: rgb(251 146 60 / 0.28); box-shadow: 0 16px 32px -18px rgba(242, 100, 25, 0.85);"{{ end }}>
