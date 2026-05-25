@@ -24,7 +24,7 @@ func TicketIndex(c *gin.Context) {
 		selectedProjectID = 0
 	}
 
-	renderTicketPage(c, selectedProjectID, "", "", nil)
+	renderTicketPage(c, selectedProjectID, "", "", nil, nil)
 }
 
 func TicketStore(c *gin.Context) {
@@ -49,7 +49,7 @@ func TicketStore(c *gin.Context) {
 	}
 
 	if err := svc.CreateRoadmapTicket(input); err != nil {
-		renderTicketPage(c, selectedProjectID, err.Error(), "ticketCreateModal", &input)
+		renderTicketPage(c, selectedProjectID, err.Error(), "ticketCreateModal", &input, nil)
 		return
 	}
 
@@ -60,7 +60,33 @@ func TicketStore(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, redirectURL)
 }
 
-func renderTicketPage(c *gin.Context, selectedProjectID int, message, openModal string, ticketOld *models.RoadmapTicketCreateInput) {
+func TicketApplyTemplate(c *gin.Context) {
+	svc := managementService()
+	selectedProjectID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("filter_project_id")))
+	if selectedProjectID < 0 {
+		selectedProjectID = 0
+	}
+
+	projectID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("project_id")))
+	templateSetID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("template_set_id")))
+	input := models.TicketTemplateApplyInput{
+		ProjectID:     projectID,
+		TemplateSetID: templateSetID,
+	}
+
+	if err := svc.ApplyTicketTemplateToProject(input, currentSessionUserID(c)); err != nil {
+		renderTicketPage(c, selectedProjectID, err.Error(), "ticketTemplateApplyModal", nil, &input)
+		return
+	}
+
+	redirectURL := "/tickets"
+	if selectedProjectID > 0 {
+		redirectURL += "?project_id=" + strconv.Itoa(selectedProjectID)
+	}
+	c.Redirect(http.StatusSeeOther, redirectURL)
+}
+
+func renderTicketPage(c *gin.Context, selectedProjectID int, message, openModal string, ticketOld *models.RoadmapTicketCreateInput, templateApplyOld *models.TicketTemplateApplyInput) {
 	svc := managementService()
 
 	tickets, err := svc.GetTickets(selectedProjectID)
@@ -94,20 +120,29 @@ func renderTicketPage(c *gin.Context, selectedProjectID int, message, openModal 
 		return
 	}
 
+	templateSvc := ticketTemplateService()
+	templateSetOptions, err := templateSvc.GetSets()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	Render(c, "tickets.html", gin.H{
 		"Title":   "Tickets",
 		"Page":    "ticket",
 		"Tickets": tickets,
 		"Columns": columns,
 
-		"TicketError":       message,
-		"OpenModal":         openModal,
-		"TicketCreateOld":   ticketOld,
-		"UserOptions":       userOptions,
-		"EpicOptions":       epicOptions,
-		"ProjectOptions":    projectOptions,
-		"SelectedProjectID": selectedProjectID,
-		"ProjectLabel":      resolveRoadmapProjectLabel(projectOptions, selectedProjectID),
+		"TicketError":        message,
+		"OpenModal":          openModal,
+		"TicketCreateOld":    ticketOld,
+		"TemplateApplyOld":   templateApplyOld,
+		"UserOptions":        userOptions,
+		"EpicOptions":        epicOptions,
+		"TemplateSetOptions": templateSetOptions,
+		"ProjectOptions":     projectOptions,
+		"SelectedProjectID":  selectedProjectID,
+		"ProjectLabel":       resolveRoadmapProjectLabel(projectOptions, selectedProjectID),
 	})
 }
 
@@ -507,36 +542,36 @@ func renderRoadMapPage(c *gin.Context, message, openModal string, epicOld interf
 	}
 
 	Render(c, "roadmap.html", gin.H{
-		"Title":              "Road Map",
-		"Page":               "roadmap",
-		"Format":             format,
-		"Epics":              filteredEpics,
-		"Tickets":            filteredTickets,
-		"Weeks":              weeks,
-		"YearGroups":         yearGroups,
-		"Rows":               rows,
-		"TimelineWidth":      timelineWidth,
-		"CurrentMarkerLeft":  currentMarkerLeft,
-		"CurrentMarkerWidth": currentMarkerWidth,
-		"ColumnWidth":        columnWidth,
-		"TotalProjects":      totalProjects,
-		"ProjectLabel":       projectLabel,
-		"SelectedProjectID":  selectedProjectID,
-		"ProjectPeriodWeeks": projectPeriodWeeks,
-		"ProjectPeriodYearGroups": projectPeriodYearGroups,
-		"ProjectPeriodRows":  projectPeriodRows,
-		"ProjectPeriodTimelineWidth": projectPeriodTimelineWidth,
-		"ProjectPeriodColumnWidth": projectPeriodColumnWidth,
-		"ProjectPeriodCurrentMarkerLeft": projectPeriodCurrentMarkerLeft,
+		"Title":                           "Road Map",
+		"Page":                            "roadmap",
+		"Format":                          format,
+		"Epics":                           filteredEpics,
+		"Tickets":                         filteredTickets,
+		"Weeks":                           weeks,
+		"YearGroups":                      yearGroups,
+		"Rows":                            rows,
+		"TimelineWidth":                   timelineWidth,
+		"CurrentMarkerLeft":               currentMarkerLeft,
+		"CurrentMarkerWidth":              currentMarkerWidth,
+		"ColumnWidth":                     columnWidth,
+		"TotalProjects":                   totalProjects,
+		"ProjectLabel":                    projectLabel,
+		"SelectedProjectID":               selectedProjectID,
+		"ProjectPeriodWeeks":              projectPeriodWeeks,
+		"ProjectPeriodYearGroups":         projectPeriodYearGroups,
+		"ProjectPeriodRows":               projectPeriodRows,
+		"ProjectPeriodTimelineWidth":      projectPeriodTimelineWidth,
+		"ProjectPeriodColumnWidth":        projectPeriodColumnWidth,
+		"ProjectPeriodCurrentMarkerLeft":  projectPeriodCurrentMarkerLeft,
 		"ProjectPeriodCurrentMarkerWidth": projectPeriodCurrentMarkerWidth,
-		"ProjectPeriodRange": projectPeriodRangeLabel,
-		"RoadmapError":       message,
-		"OpenModal":          openModal,
-		"EpicOld":            epicOld,
-		"TicketOld":          ticketOld,
-		"ProjectOptions":     projectOptions,
-		"EpicOptions":        epicOptions,
-		"UserOptions":        userOptions,
+		"ProjectPeriodRange":              projectPeriodRangeLabel,
+		"RoadmapError":                    message,
+		"OpenModal":                       openModal,
+		"EpicOld":                         epicOld,
+		"TicketOld":                       ticketOld,
+		"ProjectOptions":                  projectOptions,
+		"EpicOptions":                     epicOptions,
+		"UserOptions":                     userOptions,
 	})
 }
 

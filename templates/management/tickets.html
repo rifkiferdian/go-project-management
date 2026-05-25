@@ -36,7 +36,7 @@
                             <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h2 class="text-base font-semibold text-slate-900">Daftar Ticket</h2>
-                                    <p class="mt-1 text-sm text-slate-500">Pilih tampilan tabel atau kanban board untuk melihat ticket berdasarkan status.</p>
+                                    <p class="mt-1 text-sm text-slate-500">Data Ticket</p>
                                 </div>
                                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                                     <form method="get" action="/tickets" class="flex flex-col gap-2 sm:flex-row sm:items-center" data-project-filter-form>
@@ -52,6 +52,10 @@
                                     <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #22c55e;" data-modal-open="ticketCreateModal">
                                         <i class="bx bx-plus text-base"></i>
                                         Add Ticket
+                                    </button>
+                                    <button type="button" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #f26419;" data-modal-open="ticketTemplateApplyModal">
+                                        <i class="bx bx-copy text-base"></i>
+                                        Copy Template
                                     </button>
                                     <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
                                         <button type="button" class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition" data-view-toggle="kanban">
@@ -303,6 +307,45 @@
                 </form>
             </div>
         </div>
+        <div data-modal class="fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto p-4 sm:items-center sm:p-6" id="ticketTemplateApplyModal">
+            <div class="absolute inset-0 bg-slate-900/50" data-modal-close></div>
+            <div class="relative w-full max-w-md rounded-[24px] bg-white p-4 shadow-xl sm:p-5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-lg font-semibold">Copy Template</h2>
+                        <p class="mt-1 text-sm text-slate-500">Pilih project dan template set untuk generate epic dan ticket otomatis.</p>
+                    </div>
+                    <button type="button" data-modal-close class="text-slate-400 hover:text-slate-600"><i class="bx bx-x text-2xl"></i></button>
+                </div>
+                <form action="/tickets/apply-template" method="post" class="mt-6 space-y-4" data-template-apply-form>
+                    <input type="hidden" name="filter_project_id" value="{{ .SelectedProjectID }}" data-template-filter-project-id>
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Project</label>
+                        <select name="project_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#f26419] focus:ring-2 focus:ring-[#f26419]/10" data-template-apply-project>
+                            <option value="">Pilih project</option>
+                            {{ range .ProjectOptions }}
+                            <option value="{{ .ID }}" {{ with $.TemplateApplyOld }}{{ if eq $.ID .ProjectID }}selected{{ end }}{{ end }}>{{ .Name }}</option>
+                            {{ end }}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-500">Template Set</label>
+                        <select name="template_set_id" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-[#f26419] focus:ring-2 focus:ring-[#f26419]/10">
+                            <option value="">Pilih template</option>
+                            {{ range .TemplateSetOptions }}
+                            {{ if .IsActive }}
+                            <option value="{{ .ID }}" {{ with $.TemplateApplyOld }}{{ if eq $.ID .TemplateSetID }}selected{{ end }}{{ end }}>{{ .Name }} ({{ .Purpose }})</option>
+                            {{ end }}
+                            {{ end }}
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-3 border-t border-slate-100 pt-4">
+                        <button type="button" data-modal-close class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600">Batal</button>
+                        <button type="submit" class="rounded-xl bg-[#f26419] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95">Apply</button>
+                    </div>
+                </form>
+            </div>
+        </div>
         <script src="/assets/vendor/sweetalert2/sweetalert2.all.min.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
@@ -315,6 +358,9 @@
                 var createProjectSelect = document.querySelector('[data-ticket-create-project]');
                 var createEpicSelect = document.querySelector('[data-ticket-create-epic]');
                 var createFilterProjectInput = document.querySelector('[data-ticket-filter-project-id]');
+                var templateApplyForm = document.querySelector('[data-template-apply-form]');
+                var templateApplyProjectSelect = document.querySelector('[data-template-apply-project]');
+                var templateFilterProjectInput = document.querySelector('[data-template-filter-project-id]');
 
                 function closeSidebar() {
                     if (!sidebar) return;
@@ -341,6 +387,7 @@
                 if (projectFilter && projectFilterForm) {
                     projectFilter.addEventListener('change', function () {
                         if (createFilterProjectInput) createFilterProjectInput.value = projectFilter.value || '0';
+                        if (templateFilterProjectInput) templateFilterProjectInput.value = projectFilter.value || '0';
                         projectFilterForm.submit();
                     });
                 }
@@ -394,6 +441,18 @@
                     }
                 }
 
+                function syncTemplateApplyProjectFromFilter() {
+                    if (!templateApplyProjectSelect || !projectFilter) return;
+                    var oldValue = templateApplyProjectSelect.getAttribute('data-has-old-value');
+                    if (oldValue === '1') return;
+                    if ((templateApplyProjectSelect.value || '') !== '') return;
+
+                    var selectedFilterProjectID = parseInt(projectFilter.value || '0', 10);
+                    if (!isNaN(selectedFilterProjectID) && selectedFilterProjectID > 0) {
+                        templateApplyProjectSelect.value = String(selectedFilterProjectID);
+                    }
+                }
+
                 document.querySelectorAll('[data-modal-open]').forEach(function (trigger) {
                     trigger.addEventListener('click', function () {
                         var target = trigger.getAttribute('data-modal-open');
@@ -402,6 +461,10 @@
                             syncCreateProjectFromFilter();
                             syncEpicOptions();
                             if (createFilterProjectInput && projectFilter) createFilterProjectInput.value = projectFilter.value || '0';
+                        }
+                        if (target === 'ticketTemplateApplyModal') {
+                            syncTemplateApplyProjectFromFilter();
+                            if (templateFilterProjectInput && projectFilter) templateFilterProjectInput.value = projectFilter.value || '0';
                         }
                         openModal(target);
                     });
@@ -421,13 +484,27 @@
                     });
                 }
 
+                if (templateApplyProjectSelect) {
+                    if ((templateApplyProjectSelect.value || '') !== '') templateApplyProjectSelect.setAttribute('data-has-old-value', '1');
+                    templateApplyProjectSelect.addEventListener('change', function () {
+                        if (templateFilterProjectInput && projectFilter) templateFilterProjectInput.value = projectFilter.value || '0';
+                    });
+                }
+
                 if (createForm) {
                     createForm.addEventListener('submit', function () {
                         if (createFilterProjectInput && projectFilter) createFilterProjectInput.value = projectFilter.value || '0';
                     });
                 }
 
+                if (templateApplyForm) {
+                    templateApplyForm.addEventListener('submit', function () {
+                        if (templateFilterProjectInput && projectFilter) templateFilterProjectInput.value = projectFilter.value || '0';
+                    });
+                }
+
                 syncCreateProjectFromFilter();
+                syncTemplateApplyProjectFromFilter();
                 syncEpicOptions();
 
                 var viewButtons = document.querySelectorAll('[data-view-toggle]');

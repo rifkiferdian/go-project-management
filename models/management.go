@@ -222,6 +222,12 @@ type TicketUpdateInput struct {
 	EndsAt        string
 }
 
+// TicketTemplateApplyInput menampung input copy template ke project.
+type TicketTemplateApplyInput struct {
+	ProjectID     int
+	TemplateSetID int
+}
+
 // BoardColumn merepresentasikan kolom status pada board.
 type BoardColumn struct {
 	ID          int

@@ -387,6 +387,16 @@ func (s *ManagementService) CreateRoadmapTicket(input models.RoadmapTicketCreate
 	return s.Repo.CreateRoadmapTicket(input)
 }
 
+func (s *ManagementService) ApplyTicketTemplateToProject(input models.TicketTemplateApplyInput, actorUserID int) error {
+	if input.ProjectID <= 0 {
+		return errors.New("project wajib dipilih")
+	}
+	if input.TemplateSetID <= 0 {
+		return errors.New("template wajib dipilih")
+	}
+	return s.Repo.ApplyTicketTemplateToProject(input, actorUserID)
+}
+
 func (s *ManagementService) BuildRoadmapTimeline(epics []models.RoadmapEpic, tickets []models.RoadmapTicket, now time.Time, format string) ([]models.RoadmapWeek, []models.RoadmapTimelineRow, int, int, int, int) {
 	rangeStart, rangeEnd := timelineBounds(epics, tickets, now, format)
 	columns, columnWidth := buildRoadmapColumns(rangeStart, rangeEnd, format)

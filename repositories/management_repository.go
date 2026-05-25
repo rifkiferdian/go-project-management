@@ -1371,6 +1371,414 @@ func (r *ManagementRepository) CreateRoadmapTicket(input models.RoadmapTicketCre
 	return err
 }
 
+func (r *ManagementRepository) ApplyTicketTemplateToProject(input models.TicketTemplateApplyInput, actorUserID int) error {
+	var setExists int
+	if err := r.DB.QueryRow(`
+		SELECT COUNT(1)
+		FROM ticket_template_sets
+		WHERE id = ? AND deleted_at IS NULL AND is_active = 1
+	`, input.TemplateSetID).Scan(&setExists); err != nil {
+		return err
+	}
+	if setExists <= 0 {
+		return errors.New("template set tidak ditemukan atau nonaktif")
+	}
+
+	defaultStatusID, err := r.defaultTicketStatusID(input.ProjectID)
+	if err != nil {
+		return errors.New("default ticket status belum tersedia")
+	}
+	defaultTypeID, err := r.defaultTicketTypeID()
+	if err != nil {
+		return errors.New("default ticket type belum tersedia")
+	}
+	defaultPriorityID, err := r.defaultTicketPriorityID()
+	if err != nil {
+		return errors.New("default ticket priority belum tersedia")
+	}
+
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	var (
+		projectStartRaw sql.NullTime
+		projectOwnerID  int
+		projectDevID    int
+		ticketPrefix    string
+	)
+	if err := tx.QueryRow(`
+		SELECT start_date, owner_id, COALESCE(developer_id, 0), ticket_prefix
+		FROM projects
+		WHERE id = ? AND deleted_at IS NULL
+	`, input.ProjectID).Scan(&projectStartRaw, &projectOwnerID, &projectDevID, &ticketPrefix); err != nil {
+		_ = tx.Rollback()
+		if errors.Is(err, sql.ErrNoRows) {
+			return errors.New("project tidak ditemukan")
+		}
+		return err
+	}
+
+	baseDate := time.Now()
+	if projectStartRaw.Valid {
+		baseDate = projectStartRaw.Time
+	}
+	baseDate = time.Date(baseDate.Year(), baseDate.Month(), baseDate.Day(), 0, 0, 0, 0, baseDate.Location())
+
+	if projectOwnerID <= 0 {
+		if actorUserID > 0 {
+			projectOwnerID = actorUserID
+		} else {
+			_ = tx.Rollback()
+			return errors.New("owner project tidak valid")
+		}
+	}
+
+	if strings.TrimSpace(ticketPrefix) == "" {
+		ticketPrefix = "TKT"
+	}
+	ticketPrefix = strings.ToUpper(strings.TrimSpace(ticketPrefix))
+
+	var (
+		maxTicketSeq   int
+		maxTicketOrder int
+	)
+	if err := tx.QueryRow(`
+		SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(code, '-', -1) AS UNSIGNED)), 0)
+		FROM tickets
+		WHERE project_id = ? AND deleted_at IS NULL
+	`, input.ProjectID).Scan(&maxTicketSeq); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	if err := tx.QueryRow(`
+		SELECT COALESCE(MAX(`+"`order`"+`), 0)
+		FROM tickets
+		WHERE project_id = ? AND deleted_at IS NULL
+	`, input.ProjectID).Scan(&maxTicketOrder); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	type templateEpicRow struct {
+		ID              int
+		Name            string
+		StartOffsetDays int
+		DueOffsetDays   int
+	}
+	epicRows, err := tx.Query(`
+		SELECT
+			id,
+			name,
+			COALESCE(start_offset_days, 0) AS start_offset_days,
+			COALESCE(due_offset_days, 0) AS due_offset_days
+		FROM ticket_template_epics
+		WHERE set_id = ?
+			AND deleted_at IS NULL
+			AND is_active = 1
+		ORDER BY sort_order ASC, id ASC
+	`, input.TemplateSetID)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	var templateEpics []templateEpicRow
+	for epicRows.Next() {
+		var row templateEpicRow
+		if err := epicRows.Scan(&row.ID, &row.Name, &row.StartOffsetDays, &row.DueOffsetDays); err != nil {
+			epicRows.Close()
+			_ = tx.Rollback()
+			return err
+		}
+		templateEpics = append(templateEpics, row)
+	}
+	if err := epicRows.Err(); err != nil {
+		epicRows.Close()
+		_ = tx.Rollback()
+		return err
+	}
+	epicRows.Close()
+
+	createdEpicIDs := make(map[int]int)
+	for _, row := range templateEpics {
+		name := strings.TrimSpace(row.Name)
+		if name == "" {
+			continue
+		}
+
+		startAt := baseDate.AddDate(0, 0, row.StartOffsetDays)
+		endsAt := baseDate.AddDate(0, 0, row.DueOffsetDays)
+		if endsAt.Before(startAt) {
+			endsAt = startAt
+		}
+
+		result, err := tx.Exec(`
+			INSERT INTO epics (project_id, name, starts_at, ends_at, created_at, updated_at)
+			VALUES (?, ?, ?, ?, NOW(), NOW())
+		`, input.ProjectID, name, startAt.Format("2006-01-02"), endsAt.Format("2006-01-02"))
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		newEpicID, err := result.LastInsertId()
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		createdEpicIDs[row.ID] = int(newEpicID)
+	}
+
+	type templateItemRow struct {
+		Title                string
+		Description          string
+		TemplateEpicID       sql.NullInt64
+		DefaultTypeID        sql.NullInt64
+		DefaultPriorityID    sql.NullInt64
+		DefaultStatusID      sql.NullInt64
+		DefaultOwnerID       sql.NullInt64
+		DefaultResponsibleID sql.NullInt64
+		Estimation           sql.NullFloat64
+		StartOffsetDays      int
+		DueOffsetDays        int
+	}
+	itemRows, err := tx.Query(`
+		SELECT
+			title,
+			COALESCE(description, '') AS description,
+			template_epic_id,
+			default_type_id,
+			default_priority_id,
+			default_status_id,
+			default_owner_id,
+			default_responsible_id,
+			estimation,
+			COALESCE(start_offset_days, 0) AS start_offset_days,
+			COALESCE(due_offset_days, 0) AS due_offset_days
+		FROM ticket_template_items
+		WHERE set_id = ?
+			AND deleted_at IS NULL
+			AND is_active = 1
+		ORDER BY sort_order ASC, id ASC
+	`, input.TemplateSetID)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	var templateItems []templateItemRow
+	for itemRows.Next() {
+		var row templateItemRow
+		if err := itemRows.Scan(
+			&row.Title,
+			&row.Description,
+			&row.TemplateEpicID,
+			&row.DefaultTypeID,
+			&row.DefaultPriorityID,
+			&row.DefaultStatusID,
+			&row.DefaultOwnerID,
+			&row.DefaultResponsibleID,
+			&row.Estimation,
+			&row.StartOffsetDays,
+			&row.DueOffsetDays,
+		); err != nil {
+			itemRows.Close()
+			_ = tx.Rollback()
+			return err
+		}
+		templateItems = append(templateItems, row)
+	}
+	if err := itemRows.Err(); err != nil {
+		itemRows.Close()
+		_ = tx.Rollback()
+		return err
+	}
+	itemRows.Close()
+
+	for _, row := range templateItems {
+		title := strings.TrimSpace(row.Title)
+		if title == "" {
+			continue
+		}
+		description := strings.TrimSpace(row.Description)
+		if description == "" {
+			description = title
+		}
+
+		typeID, err := r.resolveTemplateTicketTypeID(tx, nullableInt64ToInt(row.DefaultTypeID), defaultTypeID)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		priorityID, err := r.resolveTemplateTicketPriorityID(tx, nullableInt64ToInt(row.DefaultPriorityID), defaultPriorityID)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		statusID, err := r.resolveTemplateTicketStatusID(tx, nullableInt64ToInt(row.DefaultStatusID), input.ProjectID, defaultStatusID)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+
+		ownerID, err := r.resolveTemplateUserID(tx, nullableInt64ToInt(row.DefaultOwnerID))
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		if ownerID <= 0 {
+			ownerID = projectOwnerID
+		}
+		if ownerID <= 0 {
+			_ = tx.Rollback()
+			return errors.New("owner ticket tidak valid")
+		}
+
+		responsibleID, err := r.resolveTemplateUserID(tx, nullableInt64ToInt(row.DefaultResponsibleID))
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		if responsibleID <= 0 && projectDevID > 0 {
+			responsibleID, err = r.resolveTemplateUserID(tx, projectDevID)
+			if err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+		}
+		if responsibleID <= 0 {
+			responsibleID = ownerID
+		}
+
+		var ticketEpicID interface{}
+		if row.TemplateEpicID.Valid {
+			if mappedID, ok := createdEpicIDs[int(row.TemplateEpicID.Int64)]; ok && mappedID > 0 {
+				ticketEpicID = mappedID
+			}
+		}
+
+		startAt := baseDate.AddDate(0, 0, row.StartOffsetDays)
+		endsAt := baseDate.AddDate(0, 0, row.DueOffsetDays)
+		if endsAt.Before(startAt) {
+			endsAt = startAt
+		}
+
+		maxTicketSeq++
+		maxTicketOrder++
+		ticketCode := fmt.Sprintf("%s-%d", ticketPrefix, maxTicketSeq)
+
+		_, err = tx.Exec(`
+			INSERT INTO tickets (
+				name, content, owner_id, responsible_id, status_id, project_id,
+				created_at, updated_at, code, type_id, `+"`order`"+`, priority_id, estimation, starts_at, ends_at, epic_id
+			)
+			VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?, ?, ?, ?, ?, ?)
+		`,
+			title,
+			htmlFromPlainText(description),
+			ownerID,
+			nullableInt(responsibleID),
+			statusID,
+			input.ProjectID,
+			ticketCode,
+			typeID,
+			maxTicketOrder,
+			priorityID,
+			nullableEstimation(nullableFloat64ToFloat(row.Estimation)),
+			startAt.Format("2006-01-02"),
+			endsAt.Format("2006-01-02"),
+			ticketEpicID,
+		)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (r *ManagementRepository) resolveTemplateTicketStatusID(tx *sql.Tx, preferredID, projectID, fallbackID int) (int, error) {
+	if preferredID > 0 {
+		var count int
+		if err := tx.QueryRow(`
+			SELECT COUNT(1)
+			FROM ticket_statuses
+			WHERE id = ?
+				AND deleted_at IS NULL
+				AND (project_id IS NULL OR project_id = ?)
+		`, preferredID, projectID).Scan(&count); err != nil {
+			return 0, err
+		}
+		if count > 0 {
+			return preferredID, nil
+		}
+	}
+	if fallbackID <= 0 {
+		return 0, errors.New("default status tidak valid")
+	}
+	return fallbackID, nil
+}
+
+func (r *ManagementRepository) resolveTemplateTicketTypeID(tx *sql.Tx, preferredID, fallbackID int) (int, error) {
+	if preferredID > 0 {
+		var count int
+		if err := tx.QueryRow(`
+			SELECT COUNT(1)
+			FROM ticket_types
+			WHERE id = ? AND deleted_at IS NULL
+		`, preferredID).Scan(&count); err != nil {
+			return 0, err
+		}
+		if count > 0 {
+			return preferredID, nil
+		}
+	}
+	if fallbackID <= 0 {
+		return 0, errors.New("default type tidak valid")
+	}
+	return fallbackID, nil
+}
+
+func (r *ManagementRepository) resolveTemplateTicketPriorityID(tx *sql.Tx, preferredID, fallbackID int) (int, error) {
+	if preferredID > 0 {
+		var count int
+		if err := tx.QueryRow(`
+			SELECT COUNT(1)
+			FROM ticket_priorities
+			WHERE id = ? AND deleted_at IS NULL
+		`, preferredID).Scan(&count); err != nil {
+			return 0, err
+		}
+		if count > 0 {
+			return preferredID, nil
+		}
+	}
+	if fallbackID <= 0 {
+		return 0, errors.New("default priority tidak valid")
+	}
+	return fallbackID, nil
+}
+
+func (r *ManagementRepository) resolveTemplateUserID(tx *sql.Tx, preferredID int) (int, error) {
+	if preferredID <= 0 {
+		return 0, nil
+	}
+	var count int
+	if err := tx.QueryRow(`
+		SELECT COUNT(1)
+		FROM users
+		WHERE id = ? AND deleted_at IS NULL
+	`, preferredID).Scan(&count); err != nil {
+		return 0, err
+	}
+	if count <= 0 {
+		return 0, nil
+	}
+	return preferredID, nil
+}
+
 func (r *ManagementRepository) GetRoadmapTickets() ([]models.RoadmapTicket, error) {
 	rows, err := r.DB.Query(`
 		SELECT
@@ -1607,6 +2015,20 @@ func nullableIntPointer(value *int) interface{} {
 		return nil
 	}
 	return *value
+}
+
+func nullableInt64ToInt(value sql.NullInt64) int {
+	if !value.Valid {
+		return 0
+	}
+	return int(value.Int64)
+}
+
+func nullableFloat64ToFloat(value sql.NullFloat64) float64 {
+	if !value.Valid {
+		return 0
+	}
+	return value.Float64
 }
 
 func formatOptionalDate(value sql.NullTime) string {
