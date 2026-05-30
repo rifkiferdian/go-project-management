@@ -19,12 +19,7 @@ import (
 )
 
 func TicketIndex(c *gin.Context) {
-	selectedProjectID, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("project_id", "0")))
-	if selectedProjectID < 0 {
-		selectedProjectID = 0
-	}
-
-	renderTicketPage(c, selectedProjectID, "", "", nil, nil)
+	renderTicketPage(c, selectedProjectIDFromQuery(c), "", "", nil, nil)
 }
 
 func TicketStore(c *gin.Context) {
@@ -170,17 +165,24 @@ func TicketShow(c *gin.Context) {
 		return
 	}
 
+	selectedProjectID := selectedProjectIDFromQuery(c)
+	if selectedProjectID <= 0 {
+		selectedProjectID = pageData.Ticket.ProjectID
+	}
+
 	Render(c, "ticket_detail.html", gin.H{
-		"Title":         "View Ticket",
-		"Page":          "ticket",
-		"Ticket":        pageData.Ticket,
-		"Comments":      pageData.Comments,
-		"Todos":         pageData.Todos,
-		"Activities":    pageData.Activities,
-		"Hours":         pageData.Hours,
-		"Subscribers":   pageData.Subscribers,
-		"Attachments":   pageData.Attachments,
-		"CurrentUserID": currentSessionUserID(c),
+		"Title":             "View Ticket",
+		"Page":              "ticket",
+		"Ticket":            pageData.Ticket,
+		"Comments":          pageData.Comments,
+		"Todos":             pageData.Todos,
+		"Activities":        pageData.Activities,
+		"Hours":             pageData.Hours,
+		"Subscribers":       pageData.Subscribers,
+		"Attachments":       pageData.Attachments,
+		"CurrentUserID":     currentSessionUserID(c),
+		"SelectedProjectID": selectedProjectID,
+		"BackToTicketsURL":  ticketListURL(selectedProjectID),
 	})
 }
 
@@ -236,7 +238,7 @@ func TicketAttachmentStore(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+	c.Redirect(http.StatusSeeOther, ticketDetailURL(ticketID, selectedProjectIDFromQuery(c)))
 }
 
 func TicketContentUpdate(c *gin.Context) {
@@ -251,7 +253,7 @@ func TicketContentUpdate(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+	c.Redirect(http.StatusSeeOther, ticketDetailURL(ticketID, selectedProjectIDFromQuery(c)))
 }
 
 func TicketCommentStore(c *gin.Context) {
@@ -266,7 +268,7 @@ func TicketCommentStore(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+	c.Redirect(http.StatusSeeOther, ticketDetailURL(ticketID, selectedProjectIDFromQuery(c)))
 }
 
 func TicketCommentUpdate(c *gin.Context) {
@@ -287,7 +289,7 @@ func TicketCommentUpdate(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+	c.Redirect(http.StatusSeeOther, ticketDetailURL(ticketID, selectedProjectIDFromQuery(c)))
 }
 
 func TicketTodoStore(c *gin.Context) {
@@ -302,7 +304,7 @@ func TicketTodoStore(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+	c.Redirect(http.StatusSeeOther, ticketDetailURL(ticketID, selectedProjectIDFromQuery(c)))
 }
 
 func TicketTodoUpdate(c *gin.Context) {
@@ -324,7 +326,7 @@ func TicketTodoUpdate(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+	c.Redirect(http.StatusSeeOther, ticketDetailURL(ticketID, selectedProjectIDFromQuery(c)))
 }
 
 func TicketTodoDelete(c *gin.Context) {
@@ -345,7 +347,7 @@ func TicketTodoDelete(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/tickets/"+strconv.Itoa(ticketID))
+	c.Redirect(http.StatusSeeOther, ticketDetailURL(ticketID, selectedProjectIDFromQuery(c)))
 }
 
 func TicketEdit(c *gin.Context) {
@@ -407,12 +409,7 @@ func TicketDelete(c *gin.Context) {
 		return
 	}
 
-	selectedProjectID, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("project_id", "0")))
-	redirectURL := "/tickets"
-	if selectedProjectID > 0 {
-		redirectURL += "?project_id=" + strconv.Itoa(selectedProjectID)
-	}
-	c.Redirect(http.StatusSeeOther, redirectURL)
+	c.Redirect(http.StatusSeeOther, ticketListURL(selectedProjectIDFromQuery(c)))
 }
 
 func BoardIndex(c *gin.Context) {
@@ -888,6 +885,30 @@ func normalizeRoadmapFormat(value string) string {
 	default:
 		return "week"
 	}
+}
+
+func selectedProjectIDFromQuery(c *gin.Context) int {
+	selectedProjectID, _ := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("project_id", "0")))
+	if selectedProjectID < 0 {
+		return 0
+	}
+	return selectedProjectID
+}
+
+func ticketListURL(selectedProjectID int) string {
+	redirectURL := "/tickets"
+	if selectedProjectID > 0 {
+		redirectURL += "?project_id=" + strconv.Itoa(selectedProjectID)
+	}
+	return redirectURL
+}
+
+func ticketDetailURL(ticketID, selectedProjectID int) string {
+	redirectURL := "/tickets/" + strconv.Itoa(ticketID)
+	if selectedProjectID > 0 {
+		redirectURL += "?project_id=" + strconv.Itoa(selectedProjectID)
+	}
+	return redirectURL
 }
 
 func currentSessionUserID(c *gin.Context) int {

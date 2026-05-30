@@ -21,13 +21,13 @@
                                 <h1 class="text-[1.75rem] font-semibold tracking-tight text-slate-900">View Ticket</h1>
                             </div>
                             <div class="flex flex-wrap items-center justify-between gap-3">
-                                <a href="/tickets" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-orange-200 hover:bg-orange-50 hover:text-[#f26419]">
+                                <a href="{{ .BackToTicketsURL }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-orange-200 hover:bg-orange-50 hover:text-[#f26419]">
                                     <i class="bx bx-arrow-back text-base"></i>
                                     Back to Tickets
                                 </a>
                                 <div class="flex flex-wrap items-center justify-end gap-2">
                                     {{ if index .Permissions "Update ticket" }}
-                                    <a href="/tickets/{{ .Ticket.ID }}/edit" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #2563eb;">
+                                    <a href="/tickets/{{ .Ticket.ID }}/edit?project_id={{ .SelectedProjectID }}" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95" style="background-color: #2563eb;">
                                         <i class="bx bx-edit-alt text-base"></i>
                                         Edit
                                     </a>
@@ -43,7 +43,7 @@
                             <div class="flex flex-col gap-4 border-b border-slate-100 pb-5 lg:flex-row lg:items-start lg:justify-between">
                                 <div class="min-w-0">
                                     <div class="flex flex-wrap items-center gap-2 text-[13px] text-slate-500">
-                                        <a href="/tickets/{{ .Ticket.ID }}" class="font-semibold text-blue-600 transition hover:text-blue-700">{{ .Ticket.Code }}</a>
+                                        <a href="/tickets/{{ .Ticket.ID }}?project_id={{ .SelectedProjectID }}" class="font-semibold text-blue-600 transition hover:text-blue-700">{{ .Ticket.Code }}</a>
                                         <span>|</span>
                                         <span class="text-base font-semibold text-[#f26419]">{{ .Ticket.ProjectName }}</span>
                                     </div>
@@ -125,7 +125,7 @@
                                             <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Attachment</div>
                                             <i class="bx bx-paperclip text-lg text-slate-400"></i>
                                         </div>
-                                        <form method="post" action="/tickets/{{ .Ticket.ID }}/attachments" enctype="multipart/form-data" class="rounded-xl bg-slate-50 px-4 py-5 text-center">
+                                        <form method="post" action="/tickets/{{ .Ticket.ID }}/attachments?project_id={{ .SelectedProjectID }}" enctype="multipart/form-data" class="rounded-xl bg-slate-50 px-4 py-5 text-center">
                                             <i class="bx bx-cloud-upload text-3xl text-slate-300"></i>
                                             <div class="mt-2 text-sm font-medium text-slate-600">{{ if .Attachments }}Tambah attachment{{ else }}Belum ada attachment{{ end }}</div>
                                             <div class="mt-1 text-xs leading-5 text-slate-400">Upload file maksimal 10 MB.</div>
@@ -158,7 +158,7 @@
                                         </div>
 
                                         {{ if index .Permissions "Update ticket" }}
-                                        <form method="post" action="/tickets/{{ .Ticket.ID }}/todos" class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                        <form method="post" action="/tickets/{{ .Ticket.ID }}/todos?project_id={{ .SelectedProjectID }}" class="rounded-xl border border-slate-200 bg-slate-50 p-3">
                                             <textarea
                                                 name="content"
                                                 rows="2"
@@ -189,13 +189,13 @@
                                                             <button type="button" class="text-[11px] font-semibold text-slate-500 transition hover:text-[#f26419]" data-todo-edit-toggle>
                                                                 Edit
                                                             </button>
-                                                            <form method="post" action="/tickets/{{ $.Ticket.ID }}/todos/{{ .ID }}/delete" onsubmit="return confirm('Hapus todo ini?');">
+                                                            <form method="post" action="/tickets/{{ $.Ticket.ID }}/todos/{{ .ID }}/delete?project_id={{ $.SelectedProjectID }}" onsubmit="return confirm('Hapus todo ini?');">
                                                                 <button type="submit" class="text-[11px] font-semibold text-rose-600 transition hover:text-rose-700">
                                                                     Hapus
                                                                 </button>
                                                             </form>
                                                         </div>
-                                                        <form method="post" action="/tickets/{{ $.Ticket.ID }}/todos/{{ .ID }}/update" class="mt-2 hidden rounded-lg border border-slate-200 bg-white p-2" data-todo-edit-form>
+                                                        <form method="post" action="/tickets/{{ $.Ticket.ID }}/todos/{{ .ID }}/update?project_id={{ $.SelectedProjectID }}" class="mt-2 hidden rounded-lg border border-slate-200 bg-white p-2" data-todo-edit-form>
                                                             <textarea name="content" rows="2" class="w-full resize-none rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm leading-6 text-slate-700 outline-none transition focus:border-[#f26419] focus:ring-2 focus:ring-[#f26419]/10" required>{{ .Content }}</textarea>
                                                             <label class="mt-2 inline-flex items-center gap-2 text-xs font-medium text-slate-600">
                                                                 <input type="checkbox" name="is_done" value="1" class="h-4 w-4 rounded border-slate-300" {{ if .IsDone }}checked{{ end }}>
@@ -233,7 +233,7 @@
                                     <div class="w-full max-w-2xl space-y-4">
 
                                         <!-- Form Add Comment -->
-                                        <form method="post" action="/tickets/{{ .Ticket.ID }}/comments"
+                                        <form method="post" action="/tickets/{{ .Ticket.ID }}/comments?project_id={{ .SelectedProjectID }}"
                                             class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
 
                                             <div class="mb-4 flex items-center gap-3">
@@ -313,7 +313,7 @@
                                                                 {{ .Content }}
                                                             </div>
                                                             {{ if eq .UserID $.CurrentUserID }}
-                                                            <form method="post" action="/tickets/{{ $.Ticket.ID }}/comments/{{ .ID }}/update" class="mt-2 hidden rounded-lg border border-slate-200 bg-slate-50 p-2.5" data-comment-edit-form>
+                                                            <form method="post" action="/tickets/{{ $.Ticket.ID }}/comments/{{ .ID }}/update?project_id={{ $.SelectedProjectID }}" class="mt-2 hidden rounded-lg border border-slate-200 bg-slate-50 p-2.5" data-comment-edit-form>
                                                                 <textarea name="content" rows="3" class="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 outline-none transition focus:border-[#f26419] focus:ring-2 focus:ring-[#f26419]/10" required>{{ .Content }}</textarea>
                                                                 <div class="mt-2 flex justify-end gap-2">
                                                                     <button type="button" class="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 transition hover:bg-slate-50" data-comment-edit-cancel>Batal</button>
@@ -384,7 +384,7 @@
                         <i class="bx bx-x text-2xl"></i>
                     </button>
                 </div>
-                <form method="post" action="/tickets/{{ .Ticket.ID }}/content" class="mt-5 space-y-4">
+                <form method="post" action="/tickets/{{ .Ticket.ID }}/content?project_id={{ .SelectedProjectID }}" class="mt-5 space-y-4">
                     <div>
                         <label for="ticket-content-modal" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Content</label>
                         <textarea id="ticket-content-modal" name="content" rows="10" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition focus:border-[#f26419] focus:ring-2 focus:ring-[#f26419]/10">{{ .Ticket.ContentText }}</textarea>

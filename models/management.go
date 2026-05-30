@@ -66,6 +66,7 @@ type TicketEditForm struct {
 // TicketDetail memuat informasi utama ticket.
 type TicketDetail struct {
 	ID                  int
+	ProjectID           int
 	Code                string
 	Name                string
 	ContentText         string

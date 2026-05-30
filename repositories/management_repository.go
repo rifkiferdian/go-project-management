@@ -283,6 +283,7 @@ func (r *ManagementRepository) GetTicketDetail(id int) (models.TicketDetail, err
 	err := r.DB.QueryRow(`
 		SELECT
 			t.id,
+			t.project_id,
 			t.code,
 			t.name,
 			t.content,
@@ -335,6 +336,7 @@ func (r *ManagementRepository) GetTicketDetail(id int) (models.TicketDetail, err
 		WHERE t.id = ? AND t.deleted_at IS NULL
 	`, id).Scan(
 		&item.ID,
+		&item.ProjectID,
 		&item.Code,
 		&item.Name,
 		&contentRaw,
