@@ -137,22 +137,26 @@
                     var divisionID = divisionSelect.value;
                     flowSelect.innerHTML = '';
 
-                    var placeholder = document.createElement('option');
-                    placeholder.value = '';
-                    placeholder.textContent = divisionID ? 'Pilih flow' : 'Pilih divisi terlebih dahulu';
-                    flowSelect.appendChild(placeholder);
-
                     var matches = flowOptions.filter(function (option) {
                         return option.getAttribute('data-division-id') === divisionID;
                     });
+
+                    if (!divisionID || matches.length === 0 || matches.length > 1) {
+                        var placeholder = document.createElement('option');
+                        placeholder.value = '';
+                        placeholder.textContent = !divisionID
+                            ? 'Pilih divisi terlebih dahulu'
+                            : matches.length === 0
+                                ? 'Belum ada flow untuk divisi ini'
+                                : 'Pilih flow';
+                        flowSelect.appendChild(placeholder);
+                    }
+
                     matches.forEach(function (option) {
-                        option.selected = option.value === selectedFlow;
+                        option.selected = matches.length === 1 || option.value === selectedFlow;
                         flowSelect.appendChild(option);
                     });
 
-                    if (divisionID && matches.length === 0) {
-                        placeholder.textContent = 'Belum ada flow untuk divisi ini';
-                    }
                     flowSelect.disabled = !divisionID || matches.length === 0;
                     selectedFlow = flowSelect.value;
                 }
