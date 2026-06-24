@@ -142,9 +142,9 @@
             </div>
         </div>
 
-        <div id="detail-modal" class="fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto p-4 sm:items-center sm:p-6">
-            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px]" data-modal-close></div>
-            <div class="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-2xl">
+        <div id="detail-modal" class="fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto p-4 sm:p-6">
+            <div class="fixed inset-0 backdrop-blur-[1px]" style="background-color: rgba(15, 23, 42, 0.92);" data-modal-close></div>
+            <div class="relative overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-2xl" style="width: min(94vw, 72rem); max-width: none;">
                 <div class="bg-gradient-to-r from-orange-500 to-orange-400 px-5 py-4 text-white sm:px-6">
                     <div class="flex items-start justify-between gap-4">
                         <div>
@@ -205,7 +205,7 @@
                         </div>
                     </div>
 
-                    <div class="grid gap-3">
+                    <div class="grid gap-3 md:grid-cols-2">
                         <div class="rounded-xl border border-slate-200 bg-slate-50/40 px-4 py-3">
                             <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Deskripsi Project</p>
                             <p id="detail-project-description" class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">-</p>
@@ -214,7 +214,7 @@
                             <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Tujuan Bisnis</p>
                             <p id="detail-business-goal" class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">-</p>
                         </div>
-                        <div class="rounded-xl border border-slate-200 bg-slate-50/40 px-4 py-3">
+                        <div class="rounded-xl border border-slate-200 bg-slate-50/40 px-4 py-3 md:col-span-2">
                             <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Riwayat Step Approval</p>
                             <div id="detail-step-history-cards" class="mt-2 space-y-2">
                                 <p class="text-sm text-slate-500">Belum ada riwayat step approval.</p>
@@ -304,6 +304,8 @@
                     var parts = line.split('|');
                     var stepPart = (parts[0] || '').trim();
                     var decisionsPart = (parts[1] || '').trim();
+                    var approversPart = (parts[2] || '').trim();
+                    var approvalRule = (parts[3] || '').trim().toLowerCase();
 
                     var stepTitle = stepPart;
                     var stepStatus = 'Pending';
@@ -331,13 +333,37 @@
                         decisionsHtml = chips.join(' ');
                     }
 
+                    var approversHtml = '<span class="text-xs text-slate-500">Approver belum ditentukan.</span>';
+                    if (approversPart) {
+                        approversHtml = approversPart.split(',').map(function (item) {
+                            return item.trim();
+                        }).filter(Boolean).map(function (item) {
+                            return '<span class="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700"><i class="bx bx-user"></i>' + escapeHtml(item) + '</span>';
+                        }).join(' ');
+                    }
+
+                    var approvalRuleLabel = approvalRule === 'all' ? 'Semua' : 'Salah Satu';
+                    var approvalRuleClass = approvalRule === 'all'
+                        ? 'border-orange-200 bg-orange-50 text-orange-700'
+                        : 'border-sky-200 bg-sky-50 text-sky-700';
+
                     html += ''
                         + '<div class="rounded-lg border border-slate-200 bg-white px-3 py-2.5">'
                         + '  <div class="flex flex-wrap items-center justify-between gap-2">'
                         + '    <p class="text-sm font-semibold text-slate-800">' + escapeHtml(stepTitle) + '</p>'
                         + '    <span class="inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-semibold ' + statusClass + '">' + escapeHtml(stepStatus) + '</span>'
                         + '  </div>'
-                        + '  <div class="mt-2 flex flex-wrap gap-1.5">' + decisionsHtml + '</div>'
+                        + '  <div class="mt-2">'
+                        + '    <div class="flex flex-wrap items-center gap-2">'
+                        + '      <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Akan approve</p>'
+                        + '      <span class="inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ' + approvalRuleClass + '">' + approvalRuleLabel + '</span>'
+                        + '    </div>'
+                        + '    <div class="mt-1 flex flex-wrap gap-1.5">' + approversHtml + '</div>'
+                        + '  </div>'
+                        + '  <div class="mt-2">'
+                        + '    <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Keputusan</p>'
+                        + '    <div class="mt-1 flex flex-wrap gap-1.5">' + decisionsHtml + '</div>'
+                        + '  </div>'
                         + '</div>';
                 });
 

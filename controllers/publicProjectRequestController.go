@@ -338,6 +338,7 @@ func getPublicStepHistorySummaryMap(rows []publicProjectRequestListItem) (map[in
 			ss.project_request_id,
 			ss.step_order,
 			ss.step_name,
+			ss.approval_rule,
 			ss.status,
 			COALESCE(GROUP_CONCAT(
 				DISTINCT CONCAT(
@@ -351,18 +352,56 @@ func getPublicStepHistorySummaryMap(rows []publicProjectRequestListItem) (map[in
 					')'
 				)
 				ORDER BY pa.id SEPARATOR ', '
-			), '') AS decisions
+			), '') AS decisions,
+			CONCAT_WS(', ',
+				NULLIF((
+					SELECT GROUP_CONCAT(DISTINCT direct_user.name ORDER BY direct_user.name SEPARATOR ', ')
+					FROM approval_flow_step_approvers direct_approver
+					JOIN users direct_user ON direct_user.id = direct_approver.approver_user_id
+					WHERE direct_approver.approval_flow_step_id = ss.approval_flow_step_id
+						AND direct_approver.approver_type = 'user'
+						AND direct_approver.is_active = 1
+						AND direct_user.deleted_at IS NULL
+				), ''),
+				NULLIF((
+					SELECT GROUP_CONCAT(DISTINCT role_user.name ORDER BY role_user.name SEPARATOR ', ')
+					FROM approval_flow_step_approvers role_approver
+					JOIN model_has_roles role_member
+						ON role_member.role_id = role_approver.approver_role_id
+						AND role_member.model_type = ?
+					JOIN users role_user ON role_user.id = role_member.model_id
+					WHERE role_approver.approval_flow_step_id = ss.approval_flow_step_id
+						AND role_approver.approver_type = 'role'
+						AND role_approver.is_active = 1
+						AND role_user.deleted_at IS NULL
+				), ''),
+				NULLIF((
+					SELECT GROUP_CONCAT(DISTINCT division_user.name ORDER BY division_user.name SEPARATOR ', ')
+					FROM approval_flow_step_approvers division_approver
+					JOIN user_divisions division_member
+						ON division_member.division_id = division_approver.approver_division_id
+					JOIN users division_user ON division_user.id = division_member.user_id
+					WHERE division_approver.approval_flow_step_id = ss.approval_flow_step_id
+						AND division_approver.approver_type = 'division'
+						AND division_approver.is_active = 1
+						AND division_user.deleted_at IS NULL
+				), '')
+			) AS approvers
 		FROM project_request_step_states ss
 		LEFT JOIN project_request_approvals pa
 			ON pa.project_request_id = ss.project_request_id
 			AND pa.approval_flow_step_id = ss.approval_flow_step_id
 		LEFT JOIN users u ON u.id = pa.approver_user_id
 		WHERE ss.project_request_id IN (` + strings.Join(placeholders, ",") + `)
-		GROUP BY ss.project_request_id, ss.step_order, ss.step_name, ss.status
+		GROUP BY ss.project_request_id, ss.step_order, ss.step_name, ss.approval_rule, ss.status
 		ORDER BY ss.project_request_id ASC, ss.step_order ASC
 	`
 
-	historyRows, err := config.DB.Query(query, args...)
+	queryArgs := make([]interface{}, 0, len(args)+1)
+	queryArgs = append(queryArgs, userModelType)
+	queryArgs = append(queryArgs, args...)
+
+	historyRows, err := config.DB.Query(query, queryArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -374,18 +413,19 @@ func getPublicStepHistorySummaryMap(rows []publicProjectRequestListItem) (map[in
 			requestID  int64
 			stepOrder  int
 			stepName   string
+			stepRule   string
 			stepStatus string
 			decisions  string
+			approvers  string
 		)
-		if err := historyRows.Scan(&requestID, &stepOrder, &stepName, &stepStatus, &decisions); err != nil {
+		if err := historyRows.Scan(&requestID, &stepOrder, &stepName, &stepRule, &stepStatus, &decisions, &approvers); err != nil {
 			return nil, err
 		}
 
 		line := fmt.Sprintf("Step %d - %s: %s", stepOrder, strings.TrimSpace(stepName), humanizeProjectRequestStepStatus(stepStatus))
 		decisions = strings.TrimSpace(decisions)
-		if decisions != "" {
-			line += " | " + decisions
-		}
+		approvers = strings.TrimSpace(approvers)
+		line += " | " + decisions + " | " + approvers + " | " + strings.TrimSpace(stepRule)
 		linesByRequest[requestID] = append(linesByRequest[requestID], line)
 	}
 	if err := historyRows.Err(); err != nil {
