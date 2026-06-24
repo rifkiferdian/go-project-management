@@ -61,7 +61,7 @@
 
                             <div>
                                 <label class="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600">Divisi Requester</label>
-                                <select name="request_division_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200/60" required>
+                                <select id="request_division_id" name="request_division_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200/60" required>
                                     <option value="">Pilih divisi</option>
                                     {{ $selectedDivision := index .Form "request_division_id" }}
                                     {{ range .Divisions }}
@@ -72,11 +72,11 @@
 
                             <div>
                                 <label class="text-xs font-semibold uppercase tracking-[0.2em] text-orange-600">Approval Flow</label>
-                                <select name="approval_flow_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200/60" required>
-                                    <option value="">Pilih flow</option>
+                                <select id="approval_flow_id" name="approval_flow_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200/60" required disabled>
+                                    <option value="">Pilih divisi terlebih dahulu</option>
                                     {{ $selectedFlow := index .Form "approval_flow_id" }}
                                     {{ range .Flows }}
-                                    <option value="{{ .ID }}" {{ if eq (printf "%d" .ID) $selectedFlow }}selected{{ end }}>{{ .FlowName }} ({{ .FlowCode }})</option>
+                                    <option value="{{ .ID }}" data-division-id="{{ .DivisionID }}" {{ if eq (printf "%d" .ID) $selectedFlow }}selected{{ end }}>{{ .FlowName }} ({{ .FlowCode }})</option>
                                     {{ end }}
                                 </select>
                             </div>
@@ -122,5 +122,47 @@
                 </div>
             </div>
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var divisionSelect = document.getElementById('request_division_id');
+                var flowSelect = document.getElementById('approval_flow_id');
+                if (!divisionSelect || !flowSelect) return;
+
+                var flowOptions = Array.from(flowSelect.querySelectorAll('option[data-division-id]')).map(function (option) {
+                    return option.cloneNode(true);
+                });
+                var selectedFlow = '{{ index .Form "approval_flow_id" }}';
+
+                function filterFlows() {
+                    var divisionID = divisionSelect.value;
+                    flowSelect.innerHTML = '';
+
+                    var placeholder = document.createElement('option');
+                    placeholder.value = '';
+                    placeholder.textContent = divisionID ? 'Pilih flow' : 'Pilih divisi terlebih dahulu';
+                    flowSelect.appendChild(placeholder);
+
+                    var matches = flowOptions.filter(function (option) {
+                        return option.getAttribute('data-division-id') === divisionID;
+                    });
+                    matches.forEach(function (option) {
+                        option.selected = option.value === selectedFlow;
+                        flowSelect.appendChild(option);
+                    });
+
+                    if (divisionID && matches.length === 0) {
+                        placeholder.textContent = 'Belum ada flow untuk divisi ini';
+                    }
+                    flowSelect.disabled = !divisionID || matches.length === 0;
+                    selectedFlow = flowSelect.value;
+                }
+
+                divisionSelect.addEventListener('change', function () {
+                    selectedFlow = '';
+                    filterFlows();
+                });
+                filterFlows();
+            });
+        </script>
     </body>
 </html>

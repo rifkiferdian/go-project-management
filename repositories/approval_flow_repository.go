@@ -12,9 +12,18 @@ type ApprovalFlowRepository struct {
 
 func (r *ApprovalFlowRepository) GetAll() ([]models.ApprovalFlow, error) {
 	rows, err := r.DB.Query(`
-		SELECT id, flow_code, flow_name, is_active, created_at, updated_at
-		FROM approval_flows
-		ORDER BY is_active DESC, flow_name ASC
+		SELECT
+			f.id,
+			COALESCE(f.division_id, 0),
+			COALESCE(d.name, 'Belum ditentukan'),
+			f.flow_code,
+			f.flow_name,
+			f.is_active,
+			f.created_at,
+			f.updated_at
+		FROM approval_flows f
+		LEFT JOIN divisions d ON d.id = f.division_id AND d.deleted_at IS NULL
+		ORDER BY f.is_active DESC, d.name ASC, f.flow_name ASC
 	`)
 	if err != nil {
 		return nil, err
@@ -31,6 +40,8 @@ func (r *ApprovalFlowRepository) GetAll() ([]models.ApprovalFlow, error) {
 
 		if err := rows.Scan(
 			&item.ID,
+			&item.DivisionID,
+			&item.DivisionName,
 			&item.FlowCode,
 			&item.FlowName,
 			&item.IsActive,
@@ -74,21 +85,31 @@ func (r *ApprovalFlowRepository) ExistsByCodeExceptID(flowCode string, excludeID
 	return count > 0, err
 }
 
-func (r *ApprovalFlowRepository) Create(flowCode, flowName string, isActive bool) error {
+func (r *ApprovalFlowRepository) Create(divisionID int, flowCode, flowName string, isActive bool) error {
 	_, err := r.DB.Exec(`
-		INSERT INTO approval_flows (flow_code, flow_name, is_active, created_at, updated_at)
-		VALUES (?, ?, ?, NOW(), NOW())
-	`, flowCode, flowName, isActive)
+		INSERT INTO approval_flows (division_id, flow_code, flow_name, is_active, created_at, updated_at)
+		VALUES (?, ?, ?, ?, NOW(), NOW())
+	`, divisionID, flowCode, flowName, isActive)
 	return err
 }
 
-func (r *ApprovalFlowRepository) Update(id int, flowCode, flowName string, isActive bool) error {
+func (r *ApprovalFlowRepository) Update(id, divisionID int, flowCode, flowName string, isActive bool) error {
 	_, err := r.DB.Exec(`
 		UPDATE approval_flows
-		SET flow_code = ?, flow_name = ?, is_active = ?, updated_at = NOW()
+		SET division_id = ?, flow_code = ?, flow_name = ?, is_active = ?, updated_at = NOW()
 		WHERE id = ?
-	`, flowCode, flowName, isActive, id)
+	`, divisionID, flowCode, flowName, isActive, id)
 	return err
+}
+
+func (r *ApprovalFlowRepository) DivisionExists(divisionID int) (bool, error) {
+	var count int
+	err := r.DB.QueryRow(`
+		SELECT COUNT(1)
+		FROM divisions
+		WHERE id = ? AND deleted_at IS NULL
+	`, divisionID).Scan(&count)
+	return count > 0, err
 }
 
 func (r *ApprovalFlowRepository) Delete(id int) error {

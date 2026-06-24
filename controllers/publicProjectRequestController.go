@@ -176,11 +176,12 @@ func getPublicDivisionOptions() ([]models.DivisionOption, error) {
 
 func getPublicApprovalFlowOptions() ([]models.ApprovalFlowOption, error) {
 	rows, err := config.DB.Query(`
-		SELECT id, flow_code, flow_name, is_active
-		FROM approval_flows
-		WHERE entity_type = 'project_request'
-			AND is_active = 1
-		ORDER BY flow_name ASC
+		SELECT f.id, f.division_id, d.name, f.flow_code, f.flow_name, f.is_active
+		FROM approval_flows f
+		JOIN divisions d ON d.id = f.division_id AND d.deleted_at IS NULL
+		WHERE f.entity_type = 'project_request'
+			AND f.is_active = 1
+		ORDER BY d.name ASC, f.flow_name ASC
 	`)
 	if err != nil {
 		return nil, err
@@ -190,7 +191,7 @@ func getPublicApprovalFlowOptions() ([]models.ApprovalFlowOption, error) {
 	var options []models.ApprovalFlowOption
 	for rows.Next() {
 		var item models.ApprovalFlowOption
-		if err := rows.Scan(&item.ID, &item.FlowCode, &item.FlowName, &item.IsActive); err != nil {
+		if err := rows.Scan(&item.ID, &item.DivisionID, &item.DivisionName, &item.FlowCode, &item.FlowName, &item.IsActive); err != nil {
 			return nil, err
 		}
 		options = append(options, item)
@@ -473,10 +474,10 @@ func storePublicProjectRequest(c *gin.Context, form map[string]string, requestDi
 		return fmt.Errorf("Divisi dengan id %d tidak ditemukan", requestDivisionID)
 	}
 
-	if ok, err := existsActiveProjectRequestFlow(tx, approvalFlowID); err != nil {
+	if ok, err := existsActiveProjectRequestFlow(tx, approvalFlowID, requestDivisionID); err != nil {
 		return err
 	} else if !ok {
-		return fmt.Errorf("Approval flow dengan id %d tidak aktif atau tidak ditemukan", approvalFlowID)
+		return errors.New("Approval flow tidak aktif atau bukan milik divisi requester")
 	}
 
 	if hasSteps, err := hasActiveFlowSteps(tx, approvalFlowID); err != nil {
@@ -584,15 +585,16 @@ func existsDivision(tx *sql.Tx, divisionID int) (bool, error) {
 	return count > 0, err
 }
 
-func existsActiveProjectRequestFlow(tx *sql.Tx, flowID int) (bool, error) {
+func existsActiveProjectRequestFlow(tx *sql.Tx, flowID, divisionID int) (bool, error) {
 	var count int
 	err := tx.QueryRow(`
 		SELECT COUNT(1)
 		FROM approval_flows
 		WHERE id = ?
+			AND division_id = ?
 			AND entity_type = 'project_request'
 			AND is_active = 1
-	`, flowID).Scan(&count)
+	`, flowID, divisionID).Scan(&count)
 	return count > 0, err
 }
 

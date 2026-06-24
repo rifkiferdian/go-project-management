@@ -18,11 +18,17 @@ func DivisionIndex(c *gin.Context) {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+	flows, err := approvalFlowService().GetApprovalFlows()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	Render(c, "division.html", gin.H{
 		"Title": "Divisions",
 		"Page":  "division",
 		"Rows":  divisions,
+		"Flows": flows,
 	})
 }
 
@@ -81,11 +87,17 @@ func renderDivisionWithError(c *gin.Context, message string) {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+	flows, err := approvalFlowService().GetApprovalFlows()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	Render(c, "division.html", gin.H{
 		"Title": "Divisions",
 		"Page":  "division",
 		"Rows":  divisions,
+		"Flows": flows,
 		"Error": message,
 	})
 }

@@ -13,23 +13,13 @@ import (
 )
 
 func ApprovalFlowIndex(c *gin.Context) {
-	flowSvc := approvalFlowService()
-	rows, err := flowSvc.GetApprovalFlows()
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	Render(c, "approval_flows.html", gin.H{
-		"Title": "Approval flows",
-		"Page":  "approvalFlow",
-		"Rows":  rows,
-	})
+	renderApprovalFlowsWithError(c, "")
 }
 
 func ApprovalFlowStore(c *gin.Context) {
 	flowSvc := approvalFlowService()
-	if err := flowSvc.CreateApprovalFlow(c.PostForm("flow_code"), c.PostForm("flow_name"), checkboxOn(c, "is_active")); err != nil {
+	divisionID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("division_id")))
+	if err := flowSvc.CreateApprovalFlow(divisionID, c.PostForm("flow_code"), c.PostForm("flow_name"), checkboxOn(c, "is_active")); err != nil {
 		renderApprovalFlowsWithError(c, err.Error())
 		return
 	}
@@ -43,9 +33,10 @@ func ApprovalFlowUpdate(c *gin.Context) {
 		renderApprovalFlowsWithError(c, "approval flow tidak valid")
 		return
 	}
+	divisionID, _ := strconv.Atoi(strings.TrimSpace(c.PostForm("division_id")))
 
 	flowSvc := approvalFlowService()
-	if err := flowSvc.UpdateApprovalFlow(id, c.PostForm("flow_code"), c.PostForm("flow_name"), checkboxOn(c, "is_active")); err != nil {
+	if err := flowSvc.UpdateApprovalFlow(id, divisionID, c.PostForm("flow_code"), c.PostForm("flow_name"), checkboxOn(c, "is_active")); err != nil {
 		renderApprovalFlowsWithError(c, err.Error())
 		return
 	}
@@ -82,11 +73,17 @@ func renderApprovalFlowsWithError(c *gin.Context, message string) {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+	divisions, err := getPublicDivisionOptions()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	Render(c, "approval_flows.html", gin.H{
-		"Title": "Approval flows",
-		"Page":  "approvalFlow",
-		"Rows":  rows,
-		"Error": message,
+		"Title":     "Approval flows",
+		"Page":      "approvalFlow",
+		"Rows":      rows,
+		"Divisions": divisions,
+		"Error":     message,
 	})
 }

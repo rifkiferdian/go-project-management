@@ -33,12 +33,13 @@
                             <div class="p-4">
                                 {{ if .Error }}<div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">{{ .Error }}</div>{{ end }}
                                 <div class="overflow-x-auto">
-                                    <table class="w-full min-w-[760px] text-sm">
+                                    <table class="w-full min-w-[880px] text-sm">
                                         <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                                             <tr>
                                                 <th class="px-3 py-2 text-left font-semibold">#</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Name</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Prefix</th>
+                                                <th class="px-3 py-2 text-left font-semibold">Approval Flow</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Created At</th>
                                                 <th class="px-3 py-2 text-left font-semibold">Aksi</th>
                                             </tr>
@@ -49,6 +50,13 @@
                                                 <td class="px-3 py-3 text-slate-500">{{ no $i 1 }}</td>
                                                 <td class="px-3 py-3 font-semibold text-slate-700">{{ $row.Name }}</td>
                                                 <td class="px-3 py-3 text-slate-600">{{ if $row.PrefixDivision }}{{ $row.PrefixDivision }}{{ else }}-{{ end }}</td>
+                                                <td class="px-3 py-3 text-slate-700">
+                                                    {{ range $flow := $.Flows }}
+                                                    {{ if eq $flow.DivisionID $row.ID }}
+                                                    <p>{{ $flow.FlowName }}</p>
+                                                    {{ end }}
+                                                    {{ end }}
+                                                </td>
                                                 <td class="px-3 py-3 text-slate-600">{{ $row.CreatedAtDisplay }}</td>
                                                 <td class="px-3 py-3">
                                                     <div class="flex flex-wrap gap-2">
@@ -62,7 +70,7 @@
                                                 </td>
                                             </tr>
                                             {{ else }}
-                                            <tr><td colspan="5" class="px-3 py-6 text-center text-sm text-slate-500">Belum ada division</td></tr>
+                                            <tr><td colspan="6" class="px-3 py-6 text-center text-sm text-slate-500">Belum ada division</td></tr>
                                             {{ end }}
                                         </tbody>
                                     </table>

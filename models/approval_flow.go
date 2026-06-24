@@ -3,6 +3,8 @@ package models
 // ApprovalFlow merepresentasikan master alur approval.
 type ApprovalFlow struct {
 	ID               int
+	DivisionID       int
+	DivisionName     string
 	FlowCode         string
 	FlowName         string
 	IsActive         bool
@@ -12,10 +14,12 @@ type ApprovalFlow struct {
 
 // ApprovalFlowOption dipakai untuk dropdown flow.
 type ApprovalFlowOption struct {
-	ID       int
-	FlowCode string
-	FlowName string
-	IsActive bool
+	ID           int
+	DivisionID   int
+	DivisionName string
+	FlowCode     string
+	FlowName     string
+	IsActive     bool
 }
 
 // ApprovalFlowStep merepresentasikan step alur approval.

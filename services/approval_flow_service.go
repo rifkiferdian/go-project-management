@@ -19,7 +19,10 @@ func (s *ApprovalFlowService) GetApprovalFlows() ([]models.ApprovalFlow, error) 
 	return s.Repo.GetAll()
 }
 
-func (s *ApprovalFlowService) CreateApprovalFlow(flowCode, flowName string, isActive bool) error {
+func (s *ApprovalFlowService) CreateApprovalFlow(divisionID int, flowCode, flowName string, isActive bool) error {
+	if err := s.validateDivision(divisionID); err != nil {
+		return err
+	}
 	flowCode, flowName, err := validateApprovalFlowInput(flowCode, flowName)
 	if err != nil {
 		return err
@@ -33,12 +36,15 @@ func (s *ApprovalFlowService) CreateApprovalFlow(flowCode, flowName string, isAc
 		return fmt.Errorf("flow code %s sudah digunakan", flowCode)
 	}
 
-	return s.Repo.Create(flowCode, flowName, isActive)
+	return s.Repo.Create(divisionID, flowCode, flowName, isActive)
 }
 
-func (s *ApprovalFlowService) UpdateApprovalFlow(id int, flowCode, flowName string, isActive bool) error {
+func (s *ApprovalFlowService) UpdateApprovalFlow(id, divisionID int, flowCode, flowName string, isActive bool) error {
 	if id <= 0 {
 		return errors.New("approval flow tidak valid")
+	}
+	if err := s.validateDivision(divisionID); err != nil {
+		return err
 	}
 
 	flowCode, flowName, err := validateApprovalFlowInput(flowCode, flowName)
@@ -54,7 +60,21 @@ func (s *ApprovalFlowService) UpdateApprovalFlow(id int, flowCode, flowName stri
 		return fmt.Errorf("flow code %s sudah digunakan", flowCode)
 	}
 
-	return s.Repo.Update(id, flowCode, flowName, isActive)
+	return s.Repo.Update(id, divisionID, flowCode, flowName, isActive)
+}
+
+func (s *ApprovalFlowService) validateDivision(divisionID int) error {
+	if divisionID <= 0 {
+		return errors.New("divisi wajib dipilih")
+	}
+	exists, err := s.Repo.DivisionExists(divisionID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errors.New("divisi tidak ditemukan")
+	}
+	return nil
 }
 
 func (s *ApprovalFlowService) DeleteApprovalFlow(id int) error {

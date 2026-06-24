@@ -39,6 +39,9 @@ func Connect() {
 	if err := ensureUserColumns(DB, os.Getenv("DB_NAME")); err != nil {
 		panic(err)
 	}
+	if err := ensureApprovalFlowDivisionColumn(DB, os.Getenv("DB_NAME")); err != nil {
+		panic(err)
+	}
 	if err := ensureTicketAttachmentsTable(DB); err != nil {
 		panic(err)
 	}
@@ -47,6 +50,30 @@ func Connect() {
 	}
 
 	fmt.Println("Database connected successfully")
+}
+
+func ensureApprovalFlowDivisionColumn(db *sql.DB, dbName string) error {
+	var count int
+	if err := db.QueryRow(`
+		SELECT COUNT(1)
+		FROM INFORMATION_SCHEMA.COLUMNS
+		WHERE TABLE_SCHEMA = ?
+			AND TABLE_NAME = 'approval_flows'
+			AND COLUMN_NAME = 'division_id'
+	`, dbName).Scan(&count); err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+	_, err := db.Exec(`
+		ALTER TABLE approval_flows
+		ADD COLUMN division_id BIGINT UNSIGNED NULL AFTER id,
+		ADD KEY approval_flows_division_id_foreign (division_id),
+		ADD CONSTRAINT approval_flows_division_id_foreign
+			FOREIGN KEY (division_id) REFERENCES divisions (id)
+	`)
+	return err
 }
 
 func ensureTicketScheduleColumns(db *sql.DB, dbName string) error {
