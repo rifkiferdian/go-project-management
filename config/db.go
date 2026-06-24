@@ -42,6 +42,9 @@ func Connect() {
 	if err := ensureApprovalFlowDivisionColumn(DB, os.Getenv("DB_NAME")); err != nil {
 		panic(err)
 	}
+	if err := ensureApplicationPermissions(DB); err != nil {
+		panic(err)
+	}
 	if err := ensureTicketAttachmentsTable(DB); err != nil {
 		panic(err)
 	}
@@ -50,6 +53,20 @@ func Connect() {
 	}
 
 	fmt.Println("Database connected successfully")
+}
+
+func ensureApplicationPermissions(db *sql.DB) error {
+	_, err := db.Exec(`
+		INSERT INTO permissions (name, guard_name, created_at, updated_at)
+		SELECT 'Copy ticket template', 'web', NOW(), NOW()
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM permissions
+			WHERE name = 'Copy ticket template'
+				AND guard_name = 'web'
+		)
+	`)
+	return err
 }
 
 func ensureApprovalFlowDivisionColumn(db *sql.DB, dbName string) error {
